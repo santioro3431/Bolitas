@@ -1,0 +1,458 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+}
+
+body {
+    background-color: #5d9945;
+    font-family: 'Roboto', sans-serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+}
+
+#game-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+body.in-menu #health-bar,
+body.in-menu #ammo,
+body.in-menu #kill-count,
+body.in-menu #abilities-ui,
+body.in-menu #inventory-ui {
+    display: none !important;
+}
+
+/* UI Elements */
+#health-bar {
+    position: absolute;
+    bottom: 120px;
+    /* Above inventory */
+    right: 20px;
+    width: 300px;
+    /* slightly smaller to fit well */
+    height: 25px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 15px;
+    border: 3px solid #111;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+#health-fill {
+    width: 100%;
+    height: 100%;
+    background: #ff3333;
+    transition: width 0.1s linear;
+}
+
+#ammo {
+    position: absolute;
+    bottom: 35px;
+    right: 50px;
+    font-size: 38px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+}
+
+#kill-count {
+    position: absolute;
+    top: 25px;
+    right: 40px;
+    font-size: 32px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+}
+
+#abilities-ui {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    display: flex;
+    gap: 15px;
+}
+
+.ability {
+    background: rgba(0, 0, 0, 0.6);
+    border: 3px solid #333;
+    border-radius: 8px;
+    padding: 10px;
+    width: 100px;
+    height: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    color: #fff;
+    opacity: 0.5;
+    transition: all 0.2s;
+}
+
+.ability.ready {
+    border-color: #ffaa00;
+    opacity: 1;
+    box-shadow: 0 0 15px rgba(255, 170, 0, 0.5);
+}
+
+.ability .key {
+    font-size: 24px;
+    font-weight: 900;
+    color: #ffaa00;
+}
+
+.ability .name {
+    font-size: 14px;
+    text-align: center;
+    line-height: 1.1;
+    font-weight: 700;
+}
+
+.ability .cost {
+    font-size: 12px;
+    color: #ccc;
+}
+
+#interact-prompt {
+    position: absolute;
+    top: 60%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 24px;
+    font-weight: 700;
+    border: 2px solid #ccc;
+    pointer-events: none;
+    z-index: 100;
+}
+
+#inventory-ui {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: transparent;
+    padding: 0;
+    z-index: 200;
+    pointer-events: auto;
+}
+
+.inventory-grid {
+    display: flex;
+    gap: 4px;
+}
+
+.inv-slot {
+    width: 90px;
+    height: 90px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 3px solid rgba(0, 0, 0, 0.5);
+    position: relative;
+    cursor: grab;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.1s, border-color 0.1s;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.inv-slot:active {
+    cursor: grabbing;
+}
+
+.inv-slot.drag-over {
+    border-color: #fff;
+}
+
+.inv-slot.active-slot {
+    border: 3px solid #ffff00;
+    transform: translateY(-5px);
+    box-shadow: 0 0 15px rgba(255, 255, 0, 0.5), inset 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+.slot-num {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    font-size: 14px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 1px 1px 0 #000;
+    z-index: 2;
+}
+
+.slot-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-end;
+    padding: 5px;
+    pointer-events: none;
+}
+
+.weapon-name {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    font-weight: 900;
+    text-align: center;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+    width: 90%;
+}
+
+.ammo-text {
+    font-size: 16px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 1px 1px 0 #000;
+}
+
+/* Background Color Classes for Rarities */
+.bg-rarity-orange {
+    background: linear-gradient(to bottom, #ff8c00, #b26200);
+}
+
+.bg-rarity-blue {
+    background: linear-gradient(to bottom, #0088ff, #005cba);
+}
+
+.bg-rarity-green {
+    background: linear-gradient(to bottom, #00dd00, #008500);
+}
+
+.bg-rarity-darkgreen {
+    background: linear-gradient(to bottom, #4b5320, #2c3113);
+}
+
+.bg-rarity-red {
+    background: linear-gradient(to bottom, #ff0033, #a20021);
+}
+
+/* Rarities Text (for non-background use if any) */
+.rarity-orange {
+    color: #ff8c00;
+}
+
+.rarity-blue {
+    color: #0088ff;
+}
+
+.rarity-green {
+    color: #00dd00;
+}
+
+.rarity-darkgreen {
+    color: #4b5320;
+}
+
+.rarity-red {
+    color: #ff0033;
+}
+
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+}
+
+#start-screen {
+    /* Push slightly offset for classic Surviv look */
+    justify-content: flex-start;
+    padding-top: 50px;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.logo-box {
+    background: transparent;
+    border: 6px solid #fff;
+    padding: 10px 40px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    transform: rotate(-1deg);
+}
+
+.logo-box h1 {
+    font-size: 70px;
+    font-weight: 900;
+    color: #fff;
+    margin: 0;
+    text-shadow: 3px 3px 0 #111;
+    letter-spacing: 2px;
+}
+
+.menu-panel {
+    background: rgba(30, 30, 35, 0.9);
+    border-radius: 4px;
+    padding: 20px;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    border: 1px solid #444;
+}
+
+.name-input {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    font-family: 'Roboto', sans-serif;
+    border: 2px solid #555;
+    border-radius: 4px;
+    outline: none;
+    font-weight: 700;
+}
+
+.name-input:focus {
+    border-color: #7ab536;
+}
+
+.server-select {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #7ab536;
+    color: #fff;
+    text-align: left;
+    margin-bottom: 5px;
+}
+
+/* Button Reset */
+.menu-panel button {
+    width: 100%;
+    padding: 12px 0;
+    font-size: 18px;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 900;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.2);
+    transition: filter 0.1s;
+    color: #fff;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.menu-panel button:active {
+    transform: translateY(2px);
+    box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.menu-panel button:hover:not(:disabled) {
+    filter: brightness(1.1);
+}
+
+.menu-panel button:disabled {
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.btn-row {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-row button {
+    flex: 1;
+}
+
+/* Specific Surviv Colors */
+.btn-solo {
+    background-color: #7ab536;
+    /* Dark green */
+}
+
+.btn-duo,
+.btn-squad {
+    background-color: #92cc4f;
+    /* Light green */
+}
+
+.btn-team {
+    background-color: #5ab1b5;
+    /* Teal */
+}
+
+.btn-help {
+    background-color: #7d7d7d;
+    /* Grey */
+    margin-top: 5px;
+}
+
+/* Game Over Screen overrides */
+#game-over {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+#game-over h1 {
+    font-size: 80px;
+    color: #ff3333;
+    text-shadow: 4px 4px 0 #111;
+    margin-bottom: 20px;
+}
+
+#game-over p {
+    font-size: 30px;
+    font-weight: 700;
+    color: #e0e0e0;
+    margin-bottom: 50px;
+    text-shadow: 2px 2px 0 #000;
+}
+
+#restart-btn {
+    padding: 18px 60px;
+    font-size: 32px;
+    font-weight: 900;
+    color: #fff;
+    background: #ff8c00;
+    border: 4px solid #cc7000;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 8px 0 #995400;
+    text-shadow: 2px 2px 0 #a35900;
+}
+
+#restart-btn:active {
+    transform: translateY(8px);
+    box-shadow: 0 0px 0 #995400;
+}
+
+.hidden {
+    display: none !important;
+}

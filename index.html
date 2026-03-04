@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bolita Shooter</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700;900&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="health-bar">
+                <div id="health-fill"></div>
+            </div>
+            <div id="ammo">30 / 30</div>
+            <div id="kill-count">KILLS: 0</div>
+
+            <div id="abilities-ui">
+                <div class="ability" id="ability-1">
+                    <span class="key">T</span>
+                    <span class="name">Heal 30%</span>
+                    <span class="cost">2 Kills</span>
+                </div>
+                <div class="ability" id="ability-2">
+                    <span class="key">Y</span>
+                    <span class="name">Stamina</span>
+                    <span class="cost">5 Kills</span>
+                </div>
+                <div class="ability" id="ability-3">
+                    <span class="key">U</span>
+                    <span class="name">Bomb Strike</span>
+                    <span class="cost">10 Kills</span>
+                </div>
+            </div>
+
+            <div id="inventory-ui">
+                <div class="inventory-grid">
+                    <div class="inv-slot" data-index="0">
+                        <span class="slot-num">1</span>
+                        <div class="slot-content"></div>
+                    </div>
+                    <div class="inv-slot" data-index="1">
+                        <span class="slot-num">2</span>
+                        <div class="slot-content"></div>
+                    </div>
+                    <div class="inv-slot" data-index="2">
+                        <span class="slot-num">3</span>
+                        <div class="slot-content"></div>
+                    </div>
+                    <div class="inv-slot" data-index="3">
+                        <span class="slot-num">4</span>
+                        <div class="slot-content"></div>
+                    </div>
+                    <div class="inv-slot" data-index="4">
+                        <span class="slot-num">5</span>
+                        <div class="slot-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="interact-prompt" class="hidden">
+                <span id="prompt-text"></span>
+            </div>
+
+            <div id="start-screen" class="screen">
+                <div class="logo-box">
+                    <h1>BOLITA SHOOTER</h1>
+                </div>
+                <div class="menu-panel">
+                    <input type="text" id="player-name" placeholder="Enter your name here" class="name-input">
+                    <button id="start-btn" class="btn-solo">Deploy</button>
+                </div>
+            </div>
+
+            <div id="game-over" class="screen hidden">
+                <h1>YOU DIED</h1>
+                <p>KILLS: <span id="final-kills">0</span></p>
+                <button id="restart-btn">PLAY AGAIN</button>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+
+</html>
