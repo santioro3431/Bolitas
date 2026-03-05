@@ -35,7 +35,7 @@ canvas {
 }
 
 body.in-menu #health-bar,
-body.in-menu #kill-count,
+body.in-menu #stats-container,
 body.in-menu #abilities-ui,
 body.in-menu #armor-ui,
 body.in-menu #inventory-ui {
@@ -65,14 +65,42 @@ body.in-menu #inventory-ui {
     transition: width 0.1s linear;
 }
 
-#kill-count {
+#stats-container {
     position: absolute;
-    top: 25px;
-    right: 40px;
-    font-size: 32px;
-    font-weight: 900;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 8px;
+}
+
+.stat-box {
+    background: rgba(0, 0, 0, 0.5);
+    /* grises/negros transparentes */
+    border-radius: 4px;
+    width: 75px;
+    /* todos del mismo tamaño */
+    height: 60px;
+    /* todos del mismo tamaño */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
     color: #fff;
-    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+}
+
+.stat-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #aaa;
+    margin-bottom: 2px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.stat-value {
+    font-size: 20px;
+    font-weight: 900;
+    text-shadow: none;
 }
 
 #abilities-ui {

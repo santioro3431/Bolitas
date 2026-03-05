@@ -479,10 +479,20 @@ class Bolita {
         if (this.isPlayer) updateUI();
 
         const gunLen = weaponDef.len;
-        const sx = this.x + Math.cos(this.angle) * gunLen;
-        const sy = this.y + Math.sin(this.angle) * gunLen;
-        const spread = (Math.random() - 0.5) * weaponDef.spread;
-        bullets.push(new Bullet(sx, sy, this.angle + spread, this.isPlayer, weaponDef.speed, weaponDef.damage));
+        let sx = this.x + Math.cos(this.angle) * gunLen;
+        let sy = this.y + Math.sin(this.angle) * gunLen;
+
+        // Prevent shooting through walls by raycasting the barrel
+        const spawnPoint = getValidSpawnPoint(this.x, this.y, sx, sy);
+        sx = spawnPoint.x;
+        sy = spawnPoint.y;
+
+        if (spawnPoint.hitWall) {
+            createParticles(sx, sy, '#555', 5);
+        } else {
+            const spread = (Math.random() - 0.5) * weaponDef.spread;
+            bullets.push(new Bullet(sx, sy, this.angle + spread, this.isPlayer, weaponDef.speed, weaponDef.damage));
+        }
 
         // Recoil
         if (weaponDef.icon === 'sniper') {
@@ -497,12 +507,20 @@ class Bolita {
         if (this.isPlayer) updateUI();
 
         const gunLen = weaponDef.len;
-        const sx = this.x + Math.cos(this.angle) * gunLen;
-        const sy = this.y + Math.sin(this.angle) * gunLen;
+        let sx = this.x + Math.cos(this.angle) * gunLen;
+        let sy = this.y + Math.sin(this.angle) * gunLen;
 
-        for (let i = 0; i < weaponDef.pellets; i++) {
-            const spread = (Math.random() - 0.5) * weaponDef.spread;
-            bullets.push(new Bullet(sx, sy, this.angle + spread, this.isPlayer, weaponDef.speed * (0.8 + Math.random() * 0.4), weaponDef.damage));
+        const spawnPoint = getValidSpawnPoint(this.x, this.y, sx, sy);
+        sx = spawnPoint.x;
+        sy = spawnPoint.y;
+
+        if (spawnPoint.hitWall) {
+            createParticles(sx, sy, '#555', 8);
+        } else {
+            for (let i = 0; i < weaponDef.pellets; i++) {
+                const spread = (Math.random() - 0.5) * weaponDef.spread;
+                bullets.push(new Bullet(sx, sy, this.angle + spread, this.isPlayer, weaponDef.speed * (0.8 + Math.random() * 0.4), weaponDef.damage));
+            }
         }
 
         // Major Recoil only for bots/very specific instances, otherwise no shotgun recoil
@@ -751,11 +769,22 @@ class Bolita {
             createParticles(this.x, this.y, '#990000', 40, true);
             if (this.isPlayer) {
                 gameState = 'gameover';
-                gameOverScreen.classList.remove('hidden');
-                finalKills.textContent = kills;
+                document.body.classList.add('in-menu'); // HUD escondido
+                document.getElementById('final-kills').textContent = kills;
+                document.getElementById('final-time').textContent = ((performance.now() - gameStartTime) / 1000).toFixed(1);
+                setTimeout(() => {
+                    if (gameState === 'gameover') {
+                        gameOverScreen.classList.remove('hidden');
+                    }
+                }, 1000);
             } else {
                 kills++;
                 killPoints++;
+                hordeEnemiesRemaining = Math.max(0, hordeEnemiesRemaining - 1);
+                if (hordeEnemiesRemaining === 0 && isHordeActive) {
+                    isHordeActive = false;
+                    hordeCooldownTimer = 10000; // 10 seconds break
+                }
                 updateUI();
             }
         }
@@ -1270,7 +1299,7 @@ class Tree {
         ctx.closePath();
         ctx.fill();
 
-        ctx.globalAlpha = 0.9; // Make canopy slightly transparent
+        ctx.globalAlpha = 0.5; // Highly transparent so we can see under
 
         // Dark green base border
         ctx.fillStyle = '#3a5f22';
@@ -1349,6 +1378,50 @@ let houses = [];
 let trees = [];
 let bushes = [];
 let gameLoopId;
+
+// Horde Variables
+let currentHorde = 1;
+let hordeEnemiesRemaining = 0;
+let isHordeActive = false;
+let hordeCooldownTimer = 0;
+let crateDropTimer = 10000; // Drops 2 crates every 10s
+
+function getValidSpawnPoint(x1, y1, x2, y2) {
+    const steps = 15;
+    const dx = (x2 - x1) / steps;
+    const dy = (y2 - y1) / steps;
+
+    let currentX = x1;
+    let currentY = y1;
+
+    for (let i = 0; i < steps; i++) {
+        let testX = currentX + dx;
+        let testY = currentY + dy;
+        let hit = false;
+
+        for (let h of houses) {
+            for (let w of h.walls) {
+                if (testX > w.x && testX < w.x + w.w && testY > w.y && testY < w.y + w.h) {
+                    hit = true; break;
+                }
+            }
+            if (hit) break;
+            for (let d of h.doors) {
+                if (!d.isOpen && testX > d.x && testX < d.x + d.w && testY > d.y && testY < d.y + d.h) {
+                    hit = true; break;
+                }
+            }
+            if (hit) break;
+        }
+
+        if (hit) {
+            return { x: currentX, y: currentY, hitWall: true };
+        }
+        currentX = testX;
+        currentY = testY;
+    }
+    return { x: x2, y: y2, hitWall: false };
+}
 
 function createParticles(x, y, color, count, isBlood = false) {
     for (let i = 0; i < count; i++) particles.push(new Particle(x, y, color, isBlood));
@@ -1437,7 +1510,17 @@ function updateUI() {
     drawArmorIcon(vestCtx, false, player.vestLevel);
 
     healthFill.style.width = Math.max(0, (player.health / player.maxHealth) * 100) + '%';
-    killDisplay.textContent = `KILLS: ${kills}`;
+    killDisplay.textContent = kills;
+    document.getElementById('horde-number').textContent = currentHorde;
+    document.getElementById('horde-remaining').textContent = hordeEnemiesRemaining;
+
+    const timerUI = document.getElementById('horde-timer');
+    if (!isHordeActive && hordeCooldownTimer > 0) {
+        timerUI.classList.remove('hidden');
+        document.getElementById('horde-countdown').textContent = (hordeCooldownTimer / 1000).toFixed(1);
+    } else {
+        timerUI.classList.add('hidden');
+    }
 
     // Update abilities
     if (killPoints >= 2) ability1.classList.add('ready'); else ability1.classList.remove('ready');
@@ -1473,6 +1556,10 @@ function initGame() {
     player = new Bolita(mapSize / 2, mapSize / 2, '#f5d0b5', true, playerName); // Skin tone
     bullets = []; enemies = []; crates = []; loots = []; armors = []; bombs = []; droppedWeapons = []; particles = []; houses = []; trees = []; bushes = [];
     kills = 0; killPoints = 0;
+    currentHorde = 1;
+    hordeCooldownTimer = 0;
+    crateDropTimer = 10000;
+    gameStartTime = performance.now();
     showInventory = true;
     interactPrompt.classList.add('hidden');
 
@@ -1519,16 +1606,6 @@ function initGame() {
         if (valid) crates.push(new Crate(cx, cy));
     }
 
-    // Spawn initial enemies
-    for (let i = 0; i < 30; i++) {
-        let ex, ey;
-        do {
-            ex = Math.random() * mapSize;
-            ey = Math.random() * mapSize;
-        } while (Math.hypot(ex - (mapSize / 2), ey - (mapSize / 2)) < 800);
-        enemies.push(new Bolita(ex, ey, '#d44e4e', false, ""));
-    }
-
     // Spawn environment details
     for (let i = 0; i < 40; i++) {
         let tx, ty;
@@ -1538,7 +1615,6 @@ function initGame() {
             ty = Math.random() * mapSize;
             valid = true;
             houses.forEach(h => {
-                // Pad by max tree canopy radius (~180) to avoid inside overlap
                 if (tx > h.x - 180 && tx < h.x + h.w + 180 && ty > h.y - 180 && ty < h.y + h.h + 180) {
                     valid = false;
                 }
@@ -1554,7 +1630,6 @@ function initGame() {
             by = Math.random() * mapSize;
             valid = true;
             houses.forEach(h => {
-                // Pad by max bush radius (~80)
                 if (bx > h.x - 80 && bx < h.x + h.w + 80 && by > h.y - 80 && by < h.y + h.h + 80) {
                     valid = false;
                 }
@@ -1563,6 +1638,9 @@ function initGame() {
         bushes.push(new Bush(bx, by));
     }
 
+    // Spawn initial enemies
+    startHorde();
+
     gameState = 'playing';
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
@@ -1570,6 +1648,51 @@ function initGame() {
     lastTime = performance.now();
     cancelAnimationFrame(gameLoopId);
     gameLoopId = requestAnimationFrame(gameLoop);
+}
+
+function startHorde() {
+    isHordeActive = true;
+    hordeEnemiesRemaining = 30; // 30 enemies per horde
+
+    for (let i = 0; i < 30; i++) {
+        let ex, ey;
+        do {
+            ex = Math.random() * mapSize;
+            ey = Math.random() * mapSize;
+        } while (Math.hypot(ex - (mapSize / 2), ey - (mapSize / 2)) < 800 ||
+        ex < 200 || ex > mapSize - 200 || ey < 200 || ey > mapSize - 200); // Try to spawn towards the edges somewhat
+
+        enemies.push(new Bolita(ex, ey, '#d44e4e', false, ""));
+    }
+    updateUI();
+}
+
+function spawnGlobalCrate() {
+    let cx, cy;
+    let valid = false;
+    let attempts = 0;
+
+    while (!valid && attempts < 50) {
+        valid = true;
+        cx = Math.random() * (mapSize - 200);
+        cy = Math.random() * (mapSize - 200);
+
+        houses.forEach(h => {
+            if (cx < h.x + h.w + 50 && cx + 140 > h.x - 50 && cy < h.y + h.h + 50 && cy + 140 > h.y - 50) {
+                valid = false;
+            }
+        });
+
+        if (valid) {
+            crates.forEach(c => {
+                if (cx < c.x + 140 && cx + 140 > c.x && cy < c.y + 140 && cy + 140 > c.y) {
+                    valid = false;
+                }
+            });
+        }
+        attempts++;
+    }
+    if (valid) crates.push(new Crate(cx, cy));
 }
 
 function checkHits() {
@@ -1593,14 +1716,8 @@ function checkHits() {
             });
         } else {
             if (Math.hypot(b.x - player.x, b.y - player.y) < b.radius + player.radius) {
-                b.markedForDeletion = true; player.takeDamage(b.damage);
-                if (player.health <= 0) {
-                    document.body.classList.add('in-menu');
-                    document.getElementById('final-kills').textContent = kills;
-                    setTimeout(() => {
-                        gameOverScreen.classList.remove('hidden');
-                    }, 1000);
-                }
+                b.markedForDeletion = true;
+                player.takeDamage(b.damage);
             }
         }
     });
@@ -1622,12 +1739,22 @@ function gameLoop(time) {
     droppedWeapons.forEach(w => w.update(dt));
     particles.forEach(p => p.update(dt));
 
-    // Auto-spawn enemies
-    if (enemies.length < 35 && Math.random() < 0.03) {
-        let ex, ey;
-        do { ex = Math.random() * mapSize; ey = Math.random() * mapSize; }
-        while (Math.hypot(ex - (mapSize / 2), ey - (mapSize / 2)) < 800);
-        enemies.push(new Bolita(ex, ey, '#d44e4e', false, ""));
+    // Crate Drop Logic (Every 10s)
+    crateDropTimer -= dt;
+    if (crateDropTimer <= 0) {
+        crateDropTimer = 10000;
+        for (let i = 0; i < 2; i++) {
+            spawnGlobalCrate();
+        }
+    }
+
+    // Horde Logic
+    if (!isHordeActive) {
+        hordeCooldownTimer -= dt;
+        if (hordeCooldownTimer <= 0) {
+            currentHorde++;
+            startHorde();
+        }
     }
 
     checkHits();
@@ -1724,6 +1851,7 @@ function gameLoop(time) {
 
 startBtn.addEventListener('click', initGame);
 restartBtn.addEventListener('click', () => {
+    if (gameState === 'menu') return; // Evitar clicks dobles
     gameOverScreen.classList.add('hidden');
     startScreen.classList.remove('hidden'); // Ensure the UI menu comes back
 

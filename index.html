@@ -16,7 +16,25 @@
             <div id="health-bar">
                 <div id="health-fill"></div>
             </div>
-            <div id="kill-count">KILLS: 0</div>
+            <div id="stats-container">
+                <div class="stat-box">
+                    <div class="stat-label">KILLS</div>
+                    <div class="stat-value" id="kill-count">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">HORDA</div>
+                    <div class="stat-value" id="horde-number">1</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">RESTANTES</div>
+                    <div class="stat-value" id="horde-remaining">30</div>
+                </div>
+            </div>
+
+            <div id="horde-timer" class="hidden"
+                style="position: absolute; top: 100px; left: 50%; transform: translateX(-50%); font-size: 32px; font-weight: 900; color: #fff; text-shadow: 2px 2px 0 #000; text-align: center;">
+                PRÓXIMA HORDA EN:<br><span id="horde-countdown">10.0</span>s
+            </div>
 
             <div id="abilities-ui">
                 <div class="ability" id="ability-1">
@@ -83,6 +101,7 @@
             <div id="game-over" class="screen hidden">
                 <h1>YOU DIED</h1>
                 <p>KILLS: <span id="final-kills">0</span></p>
+                <p>TIME ALIVE: <span id="final-time">0</span>s</p>
                 <button id="restart-btn">PLAY AGAIN</button>
             </div>
         </div>
