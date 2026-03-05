@@ -16,7 +16,6 @@
             <div id="health-bar">
                 <div id="health-fill"></div>
             </div>
-            <div id="ammo">30 / 30</div>
             <div id="kill-count">KILLS: 0</div>
 
             <div id="abilities-ui">
@@ -37,25 +36,30 @@
                 </div>
             </div>
 
+            <div id="armor-ui">
+                <canvas id="vest-canvas" width="60" height="80"></canvas>
+                <canvas id="helmet-canvas" width="60" height="80"></canvas>
+            </div>
+
             <div id="inventory-ui">
                 <div class="inventory-grid">
-                    <div class="inv-slot" data-index="0">
+                    <div class="inv-slot" data-index="0" draggable="true">
                         <span class="slot-num">1</span>
                         <div class="slot-content"></div>
                     </div>
-                    <div class="inv-slot" data-index="1">
+                    <div class="inv-slot" data-index="1" draggable="true">
                         <span class="slot-num">2</span>
                         <div class="slot-content"></div>
                     </div>
-                    <div class="inv-slot" data-index="2">
+                    <div class="inv-slot" data-index="2" draggable="true">
                         <span class="slot-num">3</span>
                         <div class="slot-content"></div>
                     </div>
-                    <div class="inv-slot" data-index="3">
+                    <div class="inv-slot" data-index="3" draggable="true">
                         <span class="slot-num">4</span>
                         <div class="slot-content"></div>
                     </div>
-                    <div class="inv-slot" data-index="4">
+                    <div class="inv-slot" data-index="4" draggable="true">
                         <span class="slot-num">5</span>
                         <div class="slot-content"></div>
                     </div>

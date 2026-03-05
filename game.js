@@ -11,7 +11,6 @@ window.addEventListener('resize', () => {
 
 // UI elements
 const healthFill = document.getElementById('health-fill');
-const ammoDisplay = document.getElementById('ammo');
 const killDisplay = document.getElementById('kill-count');
 const startScreen = document.getElementById('start-screen');
 const gameOverScreen = document.getElementById('game-over');
@@ -28,6 +27,11 @@ const promptText = document.getElementById('prompt-text');
 const invSlots = document.querySelectorAll('.inv-slot');
 const uiLayer = document.getElementById('ui-layer');
 
+const helmetCanvas = document.getElementById('helmet-canvas');
+const vestCanvas = document.getElementById('vest-canvas');
+const helmetCtx = helmetCanvas ? helmetCanvas.getContext('2d') : null;
+const vestCtx = vestCanvas ? vestCanvas.getContext('2d') : null;
+
 document.body.classList.add('in-menu');
 
 let gameState = 'start';
@@ -38,7 +42,7 @@ let showInventory = false;
 let draggedSlotIndex = null;
 
 // Input
-const keys = { w: false, a: false, s: false, d: false, f: false, e: false, tab: false };
+const keys = { w: false, a: false, s: false, d: false, f: false, e: false, r: false, tab: false };
 const mouse = { x: canvas.width / 2, y: canvas.height / 2, down: false };
 
 window.addEventListener('keydown', e => {
@@ -73,6 +77,9 @@ window.addEventListener('keydown', e => {
         }
         if (e.key.toLowerCase() === 'f') {
             player.tryPickupWeapon();
+        }
+        if (e.key.toLowerCase() === 'r') {
+            player.tryManualReload();
         }
         if (e.key.toLowerCase() === 'tab') {
             e.preventDefault(); // Don't do browser focus cycle
@@ -152,16 +159,16 @@ window.addEventListener('drop', (e) => {
 
 // Weapon Definitions
 const WEAPONS = {
-    Pistol: { name: 'Pistol 9mm', rarityClass: 'rarity-orange', rarityName: 'Orange', damage: 15, fireRate: 300, magSize: 15, reloadTime: 1200, speed: 1000, spread: 0.05, len: 40, icon: 'pistol' },
-    Revolver: { name: 'Revolver', rarityClass: 'rarity-orange', rarityName: 'Orange', damage: 30, fireRate: 500, magSize: 6, reloadTime: 1800, speed: 1200, spread: 0.02, len: 45, icon: 'pistol' },
-    SMG: { name: 'SMG', rarityClass: 'rarity-blue', rarityName: 'Blue', damage: 12, fireRate: 80, magSize: 30, reloadTime: 1500, speed: 1300, spread: 0.1, len: 55, icon: 'rifle' },
-    AssaultRifle: { name: 'Assault Rifle', rarityClass: 'rarity-blue', rarityName: 'Blue', damage: 20, fireRate: 150, magSize: 30, reloadTime: 2000, speed: 1500, spread: 0.04, len: 65, icon: 'rifle' },
-    LMG: { name: 'LMG', rarityClass: 'rarity-green', rarityName: 'Green', damage: 22, fireRate: 120, magSize: 100, reloadTime: 4000, speed: 1400, spread: 0.08, len: 70, icon: 'rifle' },
-    BurstRifle: { name: 'Burst Rifle', rarityClass: 'rarity-green', rarityName: 'Green', damage: 18, fireRate: 400, burst: 3, burstDelay: 80, magSize: 30, reloadTime: 1800, speed: 1600, spread: 0.02, len: 65, icon: 'rifle' },
-    BoltSniper: { name: 'Bolt Sniper', rarityClass: 'rarity-darkgreen', rarityName: 'Ugly Green', damage: 150, fireRate: 1500, magSize: 5, reloadTime: 3000, speed: 2500, spread: 0.0, len: 90, icon: 'sniper' },
-    SemiSniper: { name: 'Semi Sniper', rarityClass: 'rarity-darkgreen', rarityName: 'Ugly Green', damage: 100, fireRate: 400, magSize: 10, reloadTime: 2500, speed: 2200, spread: 0.01, len: 85, icon: 'sniper' },
-    PumpShotgun: { name: 'Pump Shotgun', rarityClass: 'rarity-red', rarityName: 'Red', damage: 10, fireRate: 1000, pellets: 8, magSize: 5, reloadTime: 2500, speed: 900, spread: 0.25, len: 75, icon: 'shotgun' },
-    AutoShotgun: { name: 'Auto Shotgun', rarityClass: 'rarity-red', rarityName: 'Red', damage: 8, fireRate: 350, pellets: 6, magSize: 8, reloadTime: 3000, speed: 900, spread: 0.3, len: 70, icon: 'shotgun' },
+    Pistol: { name: 'Pistol 9mm', rarityClass: 'rarity-orange', rarityName: 'Orange', damage: 22, fireRate: 300, magSize: 15, reloadTime: 1200, speed: 1000, spread: 0.05, len: 40, icon: 'pistol' },
+    Revolver: { name: 'Revolver', rarityClass: 'rarity-orange', rarityName: 'Orange', damage: 55, fireRate: 500, magSize: 6, reloadTime: 1800, speed: 1200, spread: 0.02, len: 45, icon: 'pistol' },
+    SMG: { name: 'SMG', rarityClass: 'rarity-blue', rarityName: 'Blue', damage: 18, fireRate: 80, magSize: 30, reloadTime: 1500, speed: 1300, spread: 0.1, len: 55, icon: 'rifle' },
+    AssaultRifle: { name: 'Assault Rifle', rarityClass: 'rarity-blue', rarityName: 'Blue', damage: 30, fireRate: 150, magSize: 30, reloadTime: 2000, speed: 1500, spread: 0.04, len: 65, icon: 'rifle' },
+    LMG: { name: 'LMG', rarityClass: 'rarity-green', rarityName: 'Green', damage: 26, fireRate: 120, magSize: 100, reloadTime: 4000, speed: 1400, spread: 0.08, len: 70, icon: 'rifle' },
+    BurstRifle: { name: 'Burst Rifle', rarityClass: 'rarity-green', rarityName: 'Green', damage: 24, fireRate: 400, burst: 3, burstDelay: 80, magSize: 30, reloadTime: 2000, speed: 1600, spread: 0.02, len: 65, icon: 'rifle' },
+    AWP: { name: 'AWP', rarityClass: 'rarity-darkgreen', rarityName: 'Ugly Green', damage: 1000, fireRate: 1500, magSize: 5, reloadTime: 3500, speed: 3000, spread: 0.0, len: 90, icon: 'sniper' },
+    BoltSniper: { name: 'Bolt Sniper', rarityClass: 'rarity-darkgreen', rarityName: 'Ugly Green', damage: 85, fireRate: 400, magSize: 10, reloadTime: 2500, speed: 2500, spread: 0.01, len: 85, icon: 'sniper' },
+    PumpShotgun: { name: 'Pump Shotgun', rarityClass: 'rarity-red', rarityName: 'Red', damage: 14, fireRate: 1000, pellets: 8, magSize: 5, shellByShellReload: true, reloadTime: 500, speed: 1000, spread: 0.25, len: 75, icon: 'shotgun' },
+    AutoShotgun: { name: 'Auto Shotgun', rarityClass: 'rarity-red', rarityName: 'Red', damage: 13, fireRate: 350, pellets: 6, magSize: 8, reloadTime: 2500, speed: 900, spread: 0.3, len: 70, icon: 'shotgun' },
 };
 
 function getRandomWeapon() {
@@ -171,7 +178,7 @@ function getRandomWeapon() {
     else if (r < 0.7) typeKeys = ['SMG', 'AssaultRifle'];
     else if (r < 0.85) typeKeys = ['LMG', 'BurstRifle'];
     else if (r < 0.95) typeKeys = ['PumpShotgun', 'AutoShotgun'];
-    else typeKeys = ['BoltSniper', 'SemiSniper'];
+    else typeKeys = ['AWP', 'BoltSniper'];
 
     return WEAPONS[typeKeys[Math.floor(Math.random() * typeKeys.length)]];
 }
@@ -182,6 +189,19 @@ woodImg.src = 'assets/wood_floor_texture_1772215927376.png';
 
 let woodPattern = null;
 woodImg.onload = () => { woodPattern = ctx.createPattern(woodImg, 'repeat'); };
+
+const armorImgs = {
+    helmet: [null, new Image(), new Image(), new Image(), new Image()],
+    vest: [null, new Image(), new Image(), new Image(), new Image()]
+};
+armorImgs.helmet[1].src = 'assets/helmet_1.png';
+armorImgs.helmet[2].src = 'assets/helmet_2.png';
+armorImgs.helmet[3].src = 'assets/helmet_3.png';
+armorImgs.helmet[4].src = 'assets/helmet_4.png';
+armorImgs.vest[1].src = 'assets/vest_1.png';
+armorImgs.vest[2].src = 'assets/vest_2.png';
+armorImgs.vest[3].src = 'assets/vest_3.png';
+armorImgs.vest[4].src = 'assets/vest_4.png';
 
 // Camera
 const camera = { x: 0, y: 0 };
@@ -225,8 +245,8 @@ class Bolita {
         this.speedMultiplier = 1;
         this.staminaTimer = 0;
 
-        this.health = isPlayer ? 100 : 40;
-        this.maxHealth = this.health;
+        this.health = 100; // Both player and enemies have 100 base HP
+        this.maxHealth = 100;
         this.helmetLevel = 0;
         this.vestLevel = 0;
 
@@ -379,10 +399,25 @@ class Bolita {
         if (this.reloading) {
             this.reloadTimer += dt;
             if (this.reloadTimer >= weaponDef.reloadTime) {
-                weaponState.ammo = weaponDef.magSize;
+                if (weaponDef.shellByShellReload) {
+                    weaponState.ammo++;
+                    this.reloadTimer = 0;
+                    if (this.isPlayer) updateUI();
+                    if (weaponState.ammo >= weaponDef.magSize) {
+                        this.reloading = false;
+                        if (this.isPlayer) updateUI();
+                    }
+                } else {
+                    weaponState.ammo = weaponDef.magSize;
+                    this.reloading = false;
+                    this.reloadTimer = 0;
+                    if (this.isPlayer) updateUI();
+                }
+            }
+            // Cancel reload if firing (for pump shotgun mostly, assuming 1 shell minimum)
+            if (this.isPlayer && mouse.down && weaponState.ammo > 0 && performance.now() - this.lastShot > weaponDef.fireRate) {
                 this.reloading = false;
                 this.reloadTimer = 0;
-                if (this.isPlayer) updateUI();
             }
         }
 
@@ -409,7 +444,6 @@ class Bolita {
             } else if (mouse.down && weaponState.ammo <= 0 && !this.reloading) {
                 this.reloading = true;
                 this.reloadTimer = 0;
-                ammoDisplay.textContent = "RELOADING...";
             }
         } else { // AI shooting logic
             // Add reaction delay and worse aim by multiplying fireRate delay and increasing spread temporarily 
@@ -451,8 +485,10 @@ class Bolita {
         bullets.push(new Bullet(sx, sy, this.angle + spread, this.isPlayer, weaponDef.speed, weaponDef.damage));
 
         // Recoil
-        this.x -= Math.cos(this.angle) * (weaponDef.damage / 5);
-        this.y -= Math.sin(this.angle) * (weaponDef.damage / 5);
+        if (weaponDef.icon === 'sniper') {
+            this.x -= Math.cos(this.angle) * 5;
+            this.y -= Math.sin(this.angle) * 5;
+        }
     }
 
     fireShotgun(weaponDef) {
@@ -469,9 +505,8 @@ class Bolita {
             bullets.push(new Bullet(sx, sy, this.angle + spread, this.isPlayer, weaponDef.speed * (0.8 + Math.random() * 0.4), weaponDef.damage));
         }
 
-        // Major Recoil
-        this.x -= Math.cos(this.angle) * 10;
-        this.y -= Math.sin(this.angle) * 10;
+        // Major Recoil only for bots/very specific instances, otherwise no shotgun recoil
+        // Removed default 10px shotgun recoil based on user request
     }
 
     shoot() { // AI fallback - this function is no longer directly called by AI movement logic
@@ -501,6 +536,16 @@ class Bolita {
         if (this.activeSlotIndex === fromIdx) this.activeSlotIndex = toIdx;
         else if (this.activeSlotIndex === toIdx) this.activeSlotIndex = fromIdx;
         updateUI();
+    }
+
+    tryManualReload() {
+        const weaponState = this.inventory[this.activeSlotIndex];
+        if (!weaponState) return;
+        if (!this.reloading && weaponState.ammo < weaponState.type.magSize) {
+            this.reloading = true;
+            this.reloadTimer = 0;
+            updateUI();
+        }
     }
 
     tryPickupWeapon() {
@@ -547,11 +592,11 @@ class Bolita {
         ctx.translate(x, y);
         ctx.rotate(angle);
 
-        // Base styling for equipped weapon
-        const glowColor = weaponDef.rarityClass === 'rarity-orange' ? '#ff8c00' :
-            weaponDef.rarityClass === 'rarity-blue' ? '#0088ff' :
-                weaponDef.rarityClass === 'rarity-green' ? '#00dd00' :
-                    weaponDef.rarityClass === 'rarity-darkgreen' ? '#4b5320' : '#ff0033';
+        // Base styling for equipped weapon (Brighter colors, except sniper)
+        const glowColor = weaponDef.rarityClass === 'rarity-orange' ? '#ffa500' :
+            weaponDef.rarityClass === 'rarity-blue' ? '#33b5e5' :
+                weaponDef.rarityClass === 'rarity-green' ? '#00e600' :
+                    weaponDef.rarityClass === 'rarity-darkgreen' ? '#4b5320' : '#ff3333';
 
         // Translate to front of bolita body
         ctx.translate(this.radius - 5, 0);
@@ -591,9 +636,10 @@ class Bolita {
         ctx.fillStyle = this.color;
         ctx.fill();
 
-        const armorColors = ['rgba(0,0,0,0.5)', '#b0b0b0', '#666666', '#222222', '#ff0000'];
+        const armorColors = ['rgba(0,0,0,0.5)', '#888888', '#444444', '#111111', '#bd0000'];
 
-        // Vest rendering (outline)
+        // Body Outline 
+        // Vest rendering
         if (this.vestLevel > 0) {
             ctx.lineWidth = 6;
             ctx.strokeStyle = armorColors[this.vestLevel];
@@ -603,7 +649,7 @@ class Bolita {
         }
         ctx.stroke();
 
-        // Helmet rendering (top circle)
+        // Helmet rendering
         if (this.helmetLevel > 0) {
             ctx.fillStyle = armorColors[this.helmetLevel];
             ctx.beginPath();
@@ -614,7 +660,56 @@ class Bolita {
             ctx.stroke();
         }
 
-        ctx.restore();        // Draw Username label
+        ctx.restore();
+
+        // Reload UI Circle and Text
+        if (this.reloading && weaponDef) {
+            const reloadProgress = this.reloadTimer / weaponDef.reloadTime;
+            const remainingSec = ((weaponDef.reloadTime - this.reloadTimer) / 1000).toFixed(1);
+
+            ctx.save();
+            ctx.translate(this.x, this.y);
+
+            const cx = this.radius + 15;
+            const cy = this.radius + 15;
+            const rRadius = 16;
+
+            // Dark background ring
+            ctx.beginPath();
+            ctx.arc(cx, cy, rRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.fill();
+
+            // Progress ring
+            ctx.beginPath();
+            ctx.arc(cx, cy, rRadius, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * reloadProgress), true); // Draws counter-clockwise to simulate counting down
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Time inside
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px Roboto';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 4;
+            ctx.fillText(`${remainingSec}s`, cx, cy);
+
+            // Reload Text underneath player
+            ctx.fillStyle = '#ffff00';
+            ctx.font = 'bold 10px Roboto';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`RELOADING`, cx, cy + rRadius + 5);
+
+            ctx.restore();
+        }
+
+        // Draw Username label
         if (this.name) {
             ctx.fillStyle = this.isPlayer ? '#ffffff' : '#ffaaaa';
             ctx.font = 'bold 16px Roboto, sans-serif';
@@ -627,11 +722,21 @@ class Bolita {
         }
     }
 
-    takeDamage(amount) {
-        let maxArmorLevel = Math.max(this.helmetLevel || 0, this.vestLevel || 0);
-        let mitigation = maxArmorLevel * 0.15; // 15%, 30%, 45%, 60%
+    takeDamage(baseDamage) {
+        // Base Mitigation
+        let finalDamage = baseDamage;
 
-        this.health -= amount * (1 - mitigation);
+        // AWP completely ignores armor calculations
+        if (baseDamage < 1000) {
+            // Stacked mitigation calculations. Combined Level 4 = ~50% damage reduction.
+            const vestMultiplier = [1.0, 0.92, 0.85, 0.77, 0.70];
+            const helmetMultiplier = [1.0, 0.92, 0.85, 0.77, 0.70];
+
+            finalDamage = baseDamage * vestMultiplier[this.vestLevel] * helmetMultiplier[this.helmetLevel];
+        }
+
+        this.health -= finalDamage;
+
         if (this.isPlayer) updateUI();
 
         // Red flash
@@ -667,7 +772,7 @@ class Bullet {
         this.life = 1000;
         this.markedForDeletion = false;
         this.color = isPlayer ? '#ffff00' : '#ff4444';
-        this.damage = isPlayer ? 15 : 12; // Player does more dmg to objects
+        this.damage = damage; // Fix bug: Inherit real weapon stats
     }
     update(dt) {
         this.x += this.vx * (dt / 1000);
@@ -675,6 +780,40 @@ class Bullet {
         this.life -= dt;
         if (this.life <= 0 || this.x < 0 || this.x > mapSize || this.y < 0 || this.y > mapSize) {
             this.markedForDeletion = true;
+        }
+        // Collide with Bolitas (Enemies/Player)
+        if (!this.markedForDeletion) {
+            const targets = this.isPlayer ? enemies : [player];
+            targets.forEach(t => {
+                if (!this.markedForDeletion && Math.hypot(this.x - t.x, this.y - t.y) < t.radius) {
+                    this.markedForDeletion = true;
+
+                    let finalHitDamage = this.damage;
+
+                    // Positional hit detection for AWP (damage >= 1000)
+                    if (this.damage >= 1000) {
+                        const distToCenter = Math.hypot(this.x - t.x, this.y - t.y);
+                        const isHeadshot = distToCenter < 15; // Inner 15px is considered the head
+
+                        if (!isHeadshot) {
+                            // Bodyshot logic: 87 damage regardless of armor, unless level 1 armor -> 100 damage
+                            if ((t.helmetLevel === 1 && t.vestLevel === 1) || Math.max(t.helmetLevel, t.vestLevel) === 1) {
+                                finalHitDamage = 100;
+                            } else {
+                                finalHitDamage = 87;
+                            }
+                        }
+                    }
+
+                    // Balance difficulty: NPCs deal 50% less damage than the player
+                    if (!this.isPlayer) {
+                        finalHitDamage = finalHitDamage * 0.5;
+                    }
+
+                    t.takeDamage(finalHitDamage);
+                    createParticles(this.x, this.y, '#cc0000', 6, true);
+                }
+            });
         }
         // Collide with crates
         if (!this.markedForDeletion) {
@@ -790,16 +929,15 @@ class DroppedWeapon {
         ctx.translate(this.x, this.y + Math.sin(this.hoverOffset) * 5);
         ctx.beginPath();
 
-        const rarityColor = this.type.rarityClass === 'rarity-orange' ? '#ff8c00' :
-            this.type.rarityClass === 'rarity-blue' ? '#0088ff' :
-                this.type.rarityClass === 'rarity-green' ? '#00dd00' :
-                    this.type.rarityClass === 'rarity-darkgreen' ? '#4b5320' : '#ff0033';
+        // Brighter colors for better visibility, except for ugly green sniper
+        const rarityColor = this.type.rarityClass === 'rarity-orange' ? '#ffa500' :
+            this.type.rarityClass === 'rarity-blue' ? '#33b5e5' :
+                this.type.rarityClass === 'rarity-green' ? '#00e600' :
+                    this.type.rarityClass === 'rarity-darkgreen' ? '#4b5320' : '#ff3333';
 
-        // Draw Circular Base
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        // Draw Circular Base (No fill, just shadow/prep for stroke)
         ctx.beginPath();
         ctx.arc(0, 0, this.radius + 5, 0, Math.PI * 2);
-        ctx.fill();
 
         // Draw Colored Ring
         ctx.lineWidth = 4;
@@ -813,11 +951,15 @@ class DroppedWeapon {
         ctx.translate(5, 0);
         ctx.scale(1.25, 1.25);
 
-        // Name text
-        ctx.fillStyle = '#fff';
-        ctx.font = '12px Roboto';
-        ctx.textAlign = 'center';
-        ctx.fillText(this.type.name, 0, -this.radius - 12);
+        if (this.nearPlayer) {
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px Roboto';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 4;
+            ctx.fillText(this.type.name, 0, -this.radius - 12);
+            ctx.shadowBlur = 0;
+        }
 
         ctx.restore();
     }
@@ -826,7 +968,7 @@ class DroppedWeapon {
 class Loot {
     constructor(x, y) {
         this.x = x; this.y = y; this.radius = 20;
-        this.type = Math.random() > 0.5 ? 'health' : 'ammo';
+        this.type = 'health'; // Changed: Always health, ammo is obsolete
         this.markedForDeletion = false;
         this.hoverOffset = 0;
     }
@@ -857,11 +999,6 @@ class Loot {
             ctx.fillStyle = '#ff0000';
             ctx.fillRect(-10, -3, 20, 6);
             ctx.fillRect(-3, -10, 6, 20);
-        } else {
-            ctx.fillStyle = '#444';
-            ctx.fillRect(-15, -15, 30, 30);
-            ctx.fillStyle = '#ffd700';
-            ctx.fillRect(-8, -10, 16, 20);
         }
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 2;
@@ -876,9 +1013,11 @@ class ArmorLoot {
         this.radius = 20;
         this.hoverOffset = 0;
         this.markedForDeletion = false;
+        this.nearPlayer = false;
     }
     update(dt) {
         this.hoverOffset += dt * 0.005;
+        this.nearPlayer = Math.hypot(this.x - player.x, this.y - player.y) < this.radius + 50;
 
         // Auto pickup mechanics
         if (Math.hypot(this.x - player.x, this.y - player.y) < this.radius + player.radius) {
@@ -897,20 +1036,43 @@ class ArmorLoot {
         ctx.save();
         ctx.translate(this.x, this.y + Math.sin(this.hoverOffset) * 5);
         ctx.beginPath();
-        const armorColors = ['rgba(0,0,0,0.5)', '#b0b0b0', '#666666', '#222222', '#ff0000'];
 
-        ctx.fillStyle = armorColors[this.level];
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.scale(1.2, 1.2);
+
+        // Dark offset drop shadow
+        ctx.beginPath();
+        ctx.arc(3, 3, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.fill();
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
+
+        // Level Colors: 1:Gray, 2:Dark Gray, 3:Black, 4:Dark Red
+        const outlineColors = ['#000', '#888888', '#444444', '#111111', '#bd0000'];
+
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = outlineColors[this.level];
         ctx.stroke();
 
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 16px Roboto';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.isHelmet ? "H" + this.level : "V" + this.level, 0, 0);
+        // Draw PNG image with Multiply to make white background invisible
+        const imgList = this.isHelmet ? armorImgs.helmet : armorImgs.vest;
+        const img = imgList[this.level];
+        if (img && img.complete) {
+            ctx.globalCompositeOperation = 'multiply';
+            ctx.drawImage(img, -14, -14, 28, 28);
+            ctx.globalCompositeOperation = 'source-over'; // Reset
+        }
+
+        if (this.nearPlayer) {
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px Roboto';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 4;
+            const name = (this.isHelmet ? "Casco" : "Chaleco") + " nivel " + this.level;
+            ctx.fillText(name, 0, -this.radius - 10);
+            ctx.shadowBlur = 0;
+        }
 
         ctx.restore();
     }
@@ -938,12 +1100,12 @@ class Bomb {
         // Damage enemies
         enemies.forEach(e => {
             if (Math.hypot(this.x - e.x, this.y - e.y) < this.maxRadius) {
-                e.takeDamage(100);
+                e.takeDamage(1000); // Nuke insta-kills
             }
         });
         // Damage player
         if (Math.hypot(this.x - player.x, this.y - player.y) < this.maxRadius) {
-            player.takeDamage(20);
+            player.takeDamage(1000); // Nuke insta-kills
         }
         // Destroy crates
         crates.forEach(c => {
@@ -1022,8 +1184,30 @@ class House {
 
         // Spawn crates inside securely avoiding walls
         // Wall thickness is 25, so inset them by 50 minimum from the edges
-        crates.push(new Crate(x + 50 + Math.random() * 50, y + 50 + Math.random() * 50));
-        crates.push(new Crate(x + width - 100 - Math.random() * 50, y + height - 100 - Math.random() * 50));
+        let numHouseCrates = 2 + Math.floor(Math.random() * 2); // 2 or 3
+        let houseCrates = [];
+        for (let i = 0; i < numHouseCrates; i++) {
+            let cx, cy;
+            let valid = false;
+            let attempts = 0;
+            while (!valid && attempts < 20) {
+                valid = true;
+                cx = x + 30 + Math.random() * (width - 200);
+                cy = y + 30 + Math.random() * (height - 200);
+                // Check against other house crates
+                houseCrates.forEach(hc => {
+                    if (cx < hc.x + 140 && cx + 140 > hc.x && cy < hc.y + 140 && cy + 140 > hc.y) {
+                        valid = false;
+                    }
+                });
+                attempts++;
+            }
+            if (valid) {
+                let newCrate = new Crate(cx, cy);
+                houseCrates.push(newCrate);
+                crates.push(newCrate);
+            }
+        }
     }
 
     drawFloor(ctx) {
@@ -1170,6 +1354,55 @@ function createParticles(x, y, color, count, isBlood = false) {
     for (let i = 0; i < count; i++) particles.push(new Particle(x, y, color, isBlood));
 }
 
+function drawArmorIcon(ctx, isHelmet, level) {
+    if (!ctx) return;
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Draw Dark Slate Background Check
+    ctx.beginPath();
+    ctx.arc(w / 2, 25, w / 2 - 2, 0, Math.PI * 2); // Shift background circle up to y=25
+    ctx.fillStyle = '#222831'; // Slate dark grey
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#000000';
+    ctx.stroke();
+
+    if (level === 0) {
+        // Draw dimmed silhouette to indicate empty
+        ctx.globalAlpha = 0.2;
+    } else {
+        ctx.globalAlpha = 1.0;
+    }
+
+    // Draw PNG image if we have it
+    const imgList = isHelmet ? armorImgs.helmet : armorImgs.vest;
+    const img = imgList[level];
+    if (img && img.complete) {
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.drawImage(img, w / 2 - 20, 5, 40, 40); // Shifted slightly up to leave room for text
+        ctx.globalCompositeOperation = 'source-over'; // Reset
+    } else if (level === 0) {
+        // Fallback for empty slot - generic white shape silhouette
+        ctx.fillStyle = '#ffffff';
+        if (isHelmet) {
+            ctx.beginPath(); ctx.arc(w / 2, 25, 14, Math.PI, 0); ctx.lineTo(w / 2 + 10, 39); ctx.lineTo(w / 2 - 14, 35); ctx.fill();
+        } else {
+            ctx.beginPath(); ctx.moveTo(w / 2 - 10, 13); ctx.lineTo(w / 2 - 15, 13); ctx.lineTo(w / 2 - 20, 25); ctx.lineTo(w / 2 - 15, 43); ctx.lineTo(w / 2 + 15, 43); ctx.lineTo(w / 2 + 20, 25); ctx.lineTo(w / 2 + 15, 13); ctx.lineTo(w / 2 + 10, 13); ctx.lineTo(w / 2 + 5, 23); ctx.lineTo(w / 2 - 5, 23); ctx.fill();
+        }
+    }
+
+    ctx.globalAlpha = 1.0; // Reset
+
+    // Draw text underneath
+    ctx.fillStyle = level > 0 ? '#ffffff' : '#888888';
+    ctx.font = 'bold 12px Roboto';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Lv ${level}`, w / 2, h - 5);
+}
+
 function updateUI() {
     // Determine interaction prompts globally
     let promptMsg = null;
@@ -1198,11 +1431,10 @@ function updateUI() {
     }
 
     const weaponState = player.inventory[player.activeSlotIndex];
-    if (weaponState) {
-        ammoDisplay.textContent = `${weaponState.ammo} / M${weaponState.type.magSize}`;
-    } else {
-        ammoDisplay.textContent = `0 / 0`;
-    }
+
+    // Update graphical canvases
+    drawArmorIcon(helmetCtx, true, player.helmetLevel);
+    drawArmorIcon(vestCtx, false, player.vestLevel);
 
     healthFill.style.width = Math.max(0, (player.health / player.maxHealth) * 100) + '%';
     killDisplay.textContent = `KILLS: ${kills}`;
@@ -1268,7 +1500,7 @@ function initGame() {
 
             // House check
             houses.forEach(h => {
-                if (cx > h.x - 100 && cx < h.x + h.w + 50 && cy > h.y - 100 && cy < h.y + h.h + 50) {
+                if (cx < h.x + h.w + 50 && cx + 140 > h.x - 50 && cy < h.y + h.h + 50 && cy + 140 > h.y - 50) {
                     valid = false;
                 }
             });
@@ -1276,7 +1508,7 @@ function initGame() {
             // Distance check from other crates
             if (valid) {
                 crates.forEach(c => {
-                    if (Math.hypot(cx - c.x, cy - c.y) < 150) {
+                    if (cx < c.x + 140 && cx + 140 > c.x && cy < c.y + 140 && cy + 140 > c.y) {
                         valid = false;
                     }
                 });
@@ -1306,8 +1538,8 @@ function initGame() {
             ty = Math.random() * mapSize;
             valid = true;
             houses.forEach(h => {
-                // Pad by tree radius (~150)
-                if (tx > h.x - 150 && tx < h.x + h.w + 150 && ty > h.y - 150 && ty < h.y + h.h + 150) {
+                // Pad by max tree canopy radius (~180) to avoid inside overlap
+                if (tx > h.x - 180 && tx < h.x + h.w + 180 && ty > h.y - 180 && ty < h.y + h.h + 180) {
                     valid = false;
                 }
             });
@@ -1315,7 +1547,20 @@ function initGame() {
         trees.push(new Tree(tx, ty));
     }
     for (let i = 0; i < 60; i++) {
-        bushes.push(new Bush(Math.random() * mapSize, Math.random() * mapSize));
+        let bx, by;
+        let valid = false;
+        while (!valid) {
+            bx = Math.random() * mapSize;
+            by = Math.random() * mapSize;
+            valid = true;
+            houses.forEach(h => {
+                // Pad by max bush radius (~80)
+                if (bx > h.x - 80 && bx < h.x + h.w + 80 && by > h.y - 80 && by < h.y + h.h + 80) {
+                    valid = false;
+                }
+            });
+        }
+        bushes.push(new Bush(bx, by));
     }
 
     gameState = 'playing';
@@ -1386,6 +1631,28 @@ function gameLoop(time) {
     }
 
     checkHits();
+
+    // Separate dropped items (Loot, Weapons, Armor)
+    let allDrops = [...loots, ...armors, ...droppedWeapons];
+    for (let i = 0; i < allDrops.length; i++) {
+        for (let j = i + 1; j < allDrops.length; j++) {
+            let itemA = allDrops[i];
+            let itemB = allDrops[j];
+            let dx = itemA.x - itemB.x;
+            let dy = itemA.y - itemB.y;
+            let dist = Math.hypot(dx, dy);
+            let minDist = itemA.radius + itemB.radius + 5;
+            if (dist < minDist && dist > 0) {
+                let overlap = minDist - dist;
+                let nx = dx / dist;
+                let ny = dy / dist;
+                itemA.x += nx * overlap * 0.1;
+                itemA.y += ny * overlap * 0.1;
+                itemB.x -= nx * overlap * 0.1;
+                itemB.y -= ny * overlap * 0.1;
+            }
+        }
+    }
 
     // UI updates
     updateUI();

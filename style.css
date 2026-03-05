@@ -35,9 +35,9 @@ canvas {
 }
 
 body.in-menu #health-bar,
-body.in-menu #ammo,
 body.in-menu #kill-count,
 body.in-menu #abilities-ui,
+body.in-menu #armor-ui,
 body.in-menu #inventory-ui {
     display: none !important;
 }
@@ -63,16 +63,6 @@ body.in-menu #inventory-ui {
     height: 100%;
     background: #ff3333;
     transition: width 0.1s linear;
-}
-
-#ammo {
-    position: absolute;
-    bottom: 35px;
-    right: 50px;
-    font-size: 38px;
-    font-weight: 900;
-    color: #fff;
-    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
 }
 
 #kill-count {
@@ -147,6 +137,23 @@ body.in-menu #inventory-ui {
     border: 2px solid #ccc;
     pointer-events: none;
     z-index: 100;
+}
+
+#armor-ui {
+    position: absolute;
+    bottom: 165px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    z-index: 100;
+}
+
+#vest-canvas,
+#helmet-canvas {
+    border-radius: 50%;
+    background: transparent;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
 }
 
 #inventory-ui {
@@ -236,15 +243,15 @@ body.in-menu #inventory-ui {
 
 /* Background Color Classes for Rarities */
 .bg-rarity-orange {
-    background: linear-gradient(to bottom, #ff8c00, #b26200);
+    background: linear-gradient(to bottom, #ffa500, #cc8400);
 }
 
 .bg-rarity-blue {
-    background: linear-gradient(to bottom, #0088ff, #005cba);
+    background: linear-gradient(to bottom, #33b5e5, #1d90c2);
 }
 
 .bg-rarity-green {
-    background: linear-gradient(to bottom, #00dd00, #008500);
+    background: linear-gradient(to bottom, #00e600, #00b300);
 }
 
 .bg-rarity-darkgreen {
@@ -252,20 +259,20 @@ body.in-menu #inventory-ui {
 }
 
 .bg-rarity-red {
-    background: linear-gradient(to bottom, #ff0033, #a20021);
+    background: linear-gradient(to bottom, #ff3333, #cc0000);
 }
 
 /* Rarities Text (for non-background use if any) */
 .rarity-orange {
-    color: #ff8c00;
+    color: #ffa500;
 }
 
 .rarity-blue {
-    color: #0088ff;
+    color: #33b5e5;
 }
 
 .rarity-green {
-    color: #00dd00;
+    color: #00e600;
 }
 
 .rarity-darkgreen {
@@ -273,7 +280,7 @@ body.in-menu #inventory-ui {
 }
 
 .rarity-red {
-    color: #ff0033;
+    color: #ff3333;
 }
 
 .screen {
