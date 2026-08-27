@@ -330,6 +330,10 @@ body.in-menu #minimap-container {
     color: #ff3333;
 }
 
+.hidden {
+    display: none !important;
+}
+
 .screen {
     position: absolute;
     top: 0;
@@ -342,12 +346,20 @@ body.in-menu #minimap-container {
     justify-content: center;
     align-items: center;
     pointer-events: auto;
+    z-index: 10;
 }
 
 #start-screen {
     justify-content: flex-start;
     padding-top: 40px;
     background: rgba(0, 0, 0, 0.35);
+    z-index: 20;
+}
+
+#how-to-play-modal,
+#join-room-modal {
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.65);
 }
 
 .surviv-logo-box {
