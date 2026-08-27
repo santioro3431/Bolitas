@@ -7,6 +7,7 @@
     <title>Bolitas </title>           
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 
 <body>
@@ -106,7 +107,25 @@
                         <button id="start-btn-plus3" class="surviv-btn btn-green btn-sub">Play +3</button>
                     </div>
 
+                    <button id="join-room-btn" class="surviv-btn btn-cyan">Unirse a Sala (Join Code)</button>
                     <button id="how-to-play-btn" class="surviv-btn btn-grey">How to Play</button>
+                </div>
+            </div>
+
+            <div id="room-code-hud" class="hidden">
+                🌐 CÓDIGO DE SALA: <span id="room-code-display">#0000</span>
+                <span class="hud-sub">Comparte este código con tus amigos para jugar juntos</span>
+            </div>
+
+            <div id="join-room-modal" class="screen hidden">
+                <div class="modal-card">
+                    <h2>🌐 UNIRSE A SALA ONLINE</h2>
+                    <p style="margin-bottom: 12px; color: #ccc;">Pídele a tu amigo el código de 4 dígitos de su sala:</p>
+                    <input type="text" id="room-code-input" placeholder="Ejemplo: 4921" class="surviv-name-input" style="letter-spacing: 4px; font-size: 24px; text-transform: uppercase;">
+                    <div class="surviv-btn-group" style="margin-top: 15px;">
+                        <button id="connect-room-btn" class="surviv-btn btn-green">CONECTAR</button>
+                        <button id="cancel-join-btn" class="surviv-btn btn-grey">CANCELAR</button>
+                    </div>
                 </div>
             </div>
 

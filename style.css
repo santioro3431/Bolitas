@@ -480,6 +480,42 @@ body.in-menu #minimap-container {
     text-align: center;
 }
 
+#room-code-hud {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    border: 2px solid #00e5ff;
+    border-radius: 8px;
+    padding: 8px 18px;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 900;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3);
+    z-index: 100;
+    pointer-events: none;
+}
+
+#room-code-display {
+    color: #00e5ff;
+    font-size: 20px;
+    letter-spacing: 2px;
+}
+
+.hud-sub {
+    display: block;
+    font-size: 11px;
+    color: #aaa;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+body.in-menu #room-code-hud {
+    display: none !important;
+}
+
 .modal-card h2 {
     font-size: 24px;
     font-weight: 900;

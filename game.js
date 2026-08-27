@@ -2583,34 +2583,152 @@ function drawMinimap() {
     minimapCtx.fill();
 }
 
+// PeerJS Online Multiplayer Co-op System
+let peer = null;
+let peerConnections = [];
+let roomCode = null;
+
+function setupHostMultiplayer() {
+    roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    const roomHud = document.getElementById('room-code-hud');
+    const roomDisplay = document.getElementById('room-code-display');
+
+    if (roomHud && roomDisplay) {
+        roomDisplay.textContent = `#${roomCode}`;
+        roomHud.classList.remove('hidden');
+    }
+
+    if (typeof Peer !== 'undefined') {
+        if (peer) peer.destroy();
+        peer = new Peer(`bolitas-room-${roomCode}`);
+
+        peer.on('open', () => {
+            createFloatingText(player.x, player.y - 40, `🌐 SALA CREADA: #${roomCode}`, '#00ffcc', 24, true);
+        });
+
+        peer.on('connection', (conn) => {
+            peerConnections.push(conn);
+
+            const allyName = conn.metadata && conn.metadata.name ? conn.metadata.name : `AMIGO ONLINE`;
+            const onlineAlly = new Bolita(player.x + 60, player.y + 40, '#00e5ff', false, allyName);
+            onlineAlly.isAlly = true;
+            onlineAlly.isOnlinePlayer = true;
+            onlineAlly.conn = conn;
+            onlineAlly.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
+            enemies.push(onlineAlly);
+
+            createFloatingText(player.x, player.y - 60, `✅ ¡${allyName} SE UNIÓ A LA PARTIDA!`, '#00ff00', 24, true);
+
+            conn.on('data', (data) => {
+                if (data.type === 'move') {
+                    onlineAlly.x = data.x;
+                    onlineAlly.y = data.y;
+                    onlineAlly.angle = data.angle;
+                }
+            });
+
+            conn.on('close', () => {
+                onlineAlly.markedForDeletion = true;
+                createFloatingText(player.x, player.y - 60, `❌ ¡${allyName} SE DESCONECTÓ!`, '#ff4444', 20);
+            });
+        });
+    }
+}
+
+function joinMultiplayerRoom(code) {
+    const cleanCode = code.trim().replace('#', '');
+    if (!cleanCode) return;
+
+    if (typeof Peer === 'undefined') {
+        alert('❌ Cargando sistema multijugador... Inténtalo de nuevo en 2 segundos.');
+        return;
+    }
+
+    if (peer) peer.destroy();
+    peer = new Peer();
+
+    peer.on('open', () => {
+        const playerName = document.getElementById('player-name').value.trim() || "Amigo Online";
+        const conn = peer.connect(`bolitas-room-${cleanCode}`, { metadata: { name: playerName } });
+
+        conn.on('open', () => {
+            document.getElementById('join-room-modal').classList.add('hidden');
+            document.getElementById('start-screen').classList.add('hidden');
+
+            initGame('solo');
+
+            createFloatingText(player.x, player.y - 40, `✅ ¡CONECTADO A LA SALA #${cleanCode}!`, '#00ff00', 24, true);
+
+            // Send player movement to Host
+            setInterval(() => {
+                if (conn && player && !player.markedForDeletion) {
+                    conn.send({
+                        type: 'move',
+                        x: player.x,
+                        y: player.y,
+                        angle: player.angle
+                    });
+                }
+            }, 40);
+        });
+
+        conn.on('error', () => {
+            alert(`❌ No se encontró la sala #${cleanCode}. Verifica que el anfitrión haya hecho clic en Play Duo o Play +3.`);
+        });
+    });
+}
+
 // Surviv.io GUI Menu Event Listeners
 const btnSolo = document.getElementById('start-btn-solo');
 const btnDuo = document.getElementById('start-btn-duo');
 const btnPlus3 = document.getElementById('start-btn-plus3');
-const btnCreateTeam = document.getElementById('create-team-btn');
+const btnJoinRoom = document.getElementById('join-room-btn');
 const btnHowToPlay = document.getElementById('how-to-play-btn');
 const btnCloseModal = document.getElementById('close-modal-btn');
+const btnConnectRoom = document.getElementById('connect-room-btn');
+const btnCancelJoin = document.getElementById('cancel-join-btn');
+
 const modalHowToPlay = document.getElementById('how-to-play-modal');
+const modalJoinRoom = document.getElementById('join-room-modal');
 
 if (btnSolo) btnSolo.addEventListener('click', () => initGame('solo'));
-if (btnDuo) btnDuo.addEventListener('click', () => initGame('duo'));
-if (btnPlus3) btnPlus3.addEventListener('click', () => initGame('plus3'));
+if (btnDuo) btnDuo.addEventListener('click', () => {
+    initGame('duo');
+    setupHostMultiplayer();
+});
+if (btnPlus3) btnPlus3.addEventListener('click', () => {
+    initGame('plus3');
+    setupHostMultiplayer();
+});
 
-if (btnCreateTeam) {
-    btnCreateTeam.addEventListener('click', () => {
-        alert("👥 CÓDIGO DE EQUIPO CREADO EXITOSAMENTE!\nCódigo de Sala: #BOLITAS-TEAM-88\n¡Comparte este código con tus amigos para jugar juntos!");
+if (btnJoinRoom) {
+    btnJoinRoom.addEventListener('click', () => {
+        if (modalJoinRoom) modalJoinRoom.classList.remove('hidden');
+    });
+}
+
+if (btnConnectRoom) {
+    btnConnectRoom.addEventListener('click', () => {
+        const inputCode = document.getElementById('room-code-input').value;
+        joinMultiplayerRoom(inputCode);
+    });
+}
+
+if (btnCancelJoin) {
+    btnCancelJoin.addEventListener('click', () => {
+        if (modalJoinRoom) modalJoinRoom.classList.add('hidden');
     });
 }
 
 if (btnHowToPlay) {
     btnHowToPlay.addEventListener('click', () => {
-        modalHowToPlay.classList.remove('hidden');
+        if (modalHowToPlay) modalHowToPlay.classList.remove('hidden');
     });
 }
 
 if (btnCloseModal) {
     btnCloseModal.addEventListener('click', () => {
-        modalHowToPlay.classList.add('hidden');
+        if (modalHowToPlay) modalHowToPlay.classList.add('hidden');
     });
 }
 restartBtn.addEventListener('click', () => {
