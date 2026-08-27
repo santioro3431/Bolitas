@@ -38,11 +38,30 @@ body.in-menu #health-bar,
 body.in-menu #stats-container,
 body.in-menu #abilities-ui,
 body.in-menu #armor-ui,
-body.in-menu #inventory-ui {
+body.in-menu #inventory-ui,
+body.in-menu #minimap-container {
     display: none !important;
 }
 
 /* UI Elements */
+#minimap-container {
+    position: absolute;
+    bottom: 25px;
+    left: 25px;
+    width: 190px;
+    height: 190px;
+    border-radius: 4px;
+    border: 3.5px solid #000000;
+    background: #7ab536;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.65);
+    overflow: hidden;
+    pointer-events: none;
+}
+#minimapCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
 #health-bar {
     position: absolute;
     bottom: 120px;
@@ -105,25 +124,25 @@ body.in-menu #inventory-ui {
 
 #abilities-ui {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
+    bottom: 225px;
+    left: 25px;
     display: flex;
-    gap: 15px;
+    gap: 10px;
 }
 
 .ability {
-    background: rgba(0, 0, 0, 0.6);
-    border: 3px solid #333;
+    background: rgba(0, 0, 0, 0.75);
+    border: 2.5px solid #444;
     border-radius: 8px;
-    padding: 10px;
-    width: 100px;
-    height: 100px;
+    padding: 6px;
+    width: 75px;
+    height: 75px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     align-items: center;
     color: #fff;
-    opacity: 0.5;
+    opacity: 0.6;
     transition: all 0.2s;
 }
 
@@ -326,66 +345,155 @@ body.in-menu #inventory-ui {
 }
 
 #start-screen {
-    /* Push slightly offset for classic Surviv look */
     justify-content: flex-start;
-    padding-top: 50px;
-    background: rgba(0, 0, 0, 0.5);
+    padding-top: 40px;
+    background: rgba(0, 0, 0, 0.35);
 }
 
-.logo-box {
-    background: transparent;
-    border: 6px solid #fff;
-    padding: 10px 40px;
-    margin-bottom: 30px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-    transform: rotate(-1deg);
+.surviv-logo-box {
+    text-align: center;
+    margin-bottom: 20px;
 }
 
-.logo-box h1 {
-    font-size: 70px;
+.surviv-title {
+    font-size: 72px;
     font-weight: 900;
-    color: #fff;
+    color: #ffffff;
     margin: 0;
-    text-shadow: 3px 3px 0 #111;
-    letter-spacing: 2px;
+    text-shadow: 3px 3px 0 #000000;
+    letter-spacing: -1px;
+    line-height: 1;
 }
 
-.menu-panel {
-    background: rgba(30, 30, 35, 0.9);
-    border-radius: 4px;
+.title-dot {
+    color: #ffcc00;
+}
+
+.surviv-subtitle {
+    font-size: 20px;
+    font-weight: 700;
+    color: #e0e0e0;
+    text-shadow: 2px 2px 0 #000000;
+    margin-top: 4px;
+}
+
+.surviv-menu-card {
+    background: rgba(28, 24, 20, 0.90);
+    border: 3px solid #4a3d30;
+    border-radius: 6px;
     padding: 20px;
-    width: 320px;
+    width: 330px;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-    border: 1px solid #444;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
-.name-input {
+.surviv-name-input {
     width: 100%;
     padding: 12px;
-    font-size: 16px;
+    font-size: 18px;
     font-family: 'Roboto', sans-serif;
-    border: 2px solid #555;
+    font-weight: 900;
+    color: #111111;
+    background: #ffffff;
+    border: 2px solid #555555;
     border-radius: 4px;
+    text-align: center;
     outline: none;
-    font-weight: 700;
 }
 
-.name-input:focus {
-    border-color: #7ab536;
+.surviv-name-input:focus {
+    border-color: #70a83b;
 }
 
-.server-select {
+.surviv-btn {
     width: 100%;
-    padding: 8px;
-    font-size: 14px;
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid #7ab536;
-    color: #fff;
+    padding: 12px;
+    font-size: 17px;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 900;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.1s ease-in-out;
+    outline: none;
+    user-select: none;
+}
+
+.btn-main {
+    font-size: 20px;
+    padding: 14px;
+}
+
+.btn-green {
+    background: #70a83b;
+    color: #ffffff;
+    border: 2px solid #4d7a27;
+    text-shadow: 1px 2px 0 #2a4710;
+}
+.btn-green:hover {
+    background: #80bb44;
+}
+
+.btn-cyan {
+    background: #3b9ca8;
+    color: #ffffff;
+    border: 2px solid #286e77;
+    text-shadow: 1px 2px 0 #1b494f;
+}
+.btn-cyan:hover {
+    background: #46adb9;
+}
+
+.btn-grey {
+    background: #555555;
+    color: #ffffff;
+    border: 2px solid #333333;
+    text-shadow: 1px 2px 0 #111111;
+}
+.btn-grey:hover {
+    background: #666666;
+}
+
+.surviv-btn:active {
+    transform: translateY(2px);
+}
+
+.surviv-btn-group {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.btn-sub {
+    flex: 1;
+}
+
+.modal-card {
+    background: rgba(24, 20, 16, 0.95);
+    border: 3px solid #70a83b;
+    border-radius: 8px;
+    padding: 25px;
+    max-width: 450px;
+    color: #ffffff;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8);
+    text-align: center;
+}
+
+.modal-card h2 {
+    font-size: 24px;
+    font-weight: 900;
+    margin-bottom: 15px;
+    color: #ffcc00;
+}
+
+.modal-card ul {
+    list-style: none;
     text-align: left;
-    margin-bottom: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 15px;
 }
 
 /* Button Reset */

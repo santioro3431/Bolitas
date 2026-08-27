@@ -31,6 +31,8 @@ const helmetCanvas = document.getElementById('helmet-canvas');
 const vestCanvas = document.getElementById('vest-canvas');
 const helmetCtx = helmetCanvas ? helmetCanvas.getContext('2d') : null;
 const vestCtx = vestCanvas ? vestCanvas.getContext('2d') : null;
+const minimapCanvas = document.getElementById('minimapCanvas');
+const minimapCtx = minimapCanvas ? minimapCanvas.getContext('2d') : null;
 
 document.body.classList.add('in-menu');
 
@@ -50,7 +52,7 @@ window.addEventListener('keydown', e => {
 
     if (gameState === 'playing') {
         if (e.key.toLowerCase() === 'e') {
-            player.tryOpenDoor();
+            player.tryInteract();
         }
         if (e.key.toLowerCase() === 't' && killPoints >= 2) {
             killPoints -= 2;
@@ -159,16 +161,16 @@ window.addEventListener('drop', (e) => {
 
 // Weapon Definitions
 const WEAPONS = {
-    Pistol: { name: 'Pistol 9mm', rarityClass: 'rarity-orange', rarityName: 'Orange', damage: 22, fireRate: 300, magSize: 15, reloadTime: 1200, speed: 1000, spread: 0.05, len: 40, icon: 'pistol' },
-    Revolver: { name: 'Revolver', rarityClass: 'rarity-orange', rarityName: 'Orange', damage: 55, fireRate: 500, magSize: 6, reloadTime: 1800, speed: 1200, spread: 0.02, len: 45, icon: 'pistol' },
-    SMG: { name: 'SMG', rarityClass: 'rarity-blue', rarityName: 'Blue', damage: 18, fireRate: 80, magSize: 30, reloadTime: 1500, speed: 1300, spread: 0.1, len: 55, icon: 'rifle' },
-    AssaultRifle: { name: 'Assault Rifle', rarityClass: 'rarity-blue', rarityName: 'Blue', damage: 30, fireRate: 150, magSize: 30, reloadTime: 2000, speed: 1500, spread: 0.04, len: 65, icon: 'rifle' },
-    LMG: { name: 'LMG', rarityClass: 'rarity-green', rarityName: 'Green', damage: 26, fireRate: 120, magSize: 100, reloadTime: 4000, speed: 1400, spread: 0.08, len: 70, icon: 'rifle' },
-    BurstRifle: { name: 'Burst Rifle', rarityClass: 'rarity-green', rarityName: 'Green', damage: 24, fireRate: 400, burst: 3, burstDelay: 80, magSize: 30, reloadTime: 2000, speed: 1600, spread: 0.02, len: 65, icon: 'rifle' },
-    AWP: { name: 'AWP', rarityClass: 'rarity-darkgreen', rarityName: 'Ugly Green', damage: 1000, fireRate: 1500, magSize: 5, reloadTime: 3500, speed: 3000, spread: 0.0, len: 90, icon: 'sniper' },
-    BoltSniper: { name: 'Bolt Sniper', rarityClass: 'rarity-darkgreen', rarityName: 'Ugly Green', damage: 85, fireRate: 400, magSize: 10, reloadTime: 2500, speed: 2500, spread: 0.01, len: 85, icon: 'sniper' },
-    PumpShotgun: { name: 'Pump Shotgun', rarityClass: 'rarity-red', rarityName: 'Red', damage: 14, fireRate: 1000, pellets: 8, magSize: 5, shellByShellReload: true, reloadTime: 500, speed: 1000, spread: 0.25, len: 75, icon: 'shotgun' },
-    AutoShotgun: { name: 'Auto Shotgun', rarityClass: 'rarity-red', rarityName: 'Red', damage: 13, fireRate: 350, pellets: 6, magSize: 8, reloadTime: 2500, speed: 900, spread: 0.3, len: 70, icon: 'shotgun' },
+    Pistol: { name: 'Pistol 9mm', rarityClass: 'rarity-orange', rarityName: 'Orange', damage: 18, fireRate: 280, magSize: 15, reloadTime: 1200, speed: 1100, spread: 0.04, len: 40, icon: 'pistol' },
+    Revolver: { name: 'Revolver', rarityClass: 'rarity-orange', rarityName: 'Orange', damage: 42, fireRate: 450, magSize: 6, reloadTime: 1800, speed: 1300, spread: 0.02, len: 45, icon: 'pistol' },
+    SMG: { name: 'SMG', rarityClass: 'rarity-blue', rarityName: 'Blue', damage: 25, fireRate: 85, magSize: 30, reloadTime: 1500, speed: 1300, spread: 0.08, len: 55, icon: 'rifle' },
+    AssaultRifle: { name: 'Assault Rifle', rarityClass: 'rarity-blue', rarityName: 'Blue', damage: 24, fireRate: 140, magSize: 30, reloadTime: 2000, speed: 1500, spread: 0.035, len: 65, icon: 'rifle' },
+    LMG: { name: 'LMG', rarityClass: 'rarity-green', rarityName: 'Green', damage: 22, fireRate: 110, magSize: 100, reloadTime: 4000, speed: 1400, spread: 0.07, len: 70, icon: 'rifle' },
+    BurstRifle: { name: 'Burst Rifle', rarityClass: 'rarity-green', rarityName: 'Green', damage: 22, fireRate: 400, burst: 3, burstDelay: 80, magSize: 30, reloadTime: 2000, speed: 1600, spread: 0.02, len: 65, icon: 'rifle' },
+    BoltSniper: { name: 'Bolt Sniper', rarityClass: 'rarity-darkgreen', rarityName: 'Ugly Green', damage: 60, fireRate: 700, magSize: 10, reloadTime: 2500, speed: 2500, spread: 0.01, len: 85, icon: 'sniper' },
+    AWP: { name: 'AWP', rarityClass: 'rarity-darkgreen', rarityName: 'Ugly Green', damage: 150, fireRate: 1400, magSize: 5, reloadTime: 3500, speed: 3000, spread: 0.0, len: 90, icon: 'sniper' },
+    PumpShotgun: { name: 'Pump Shotgun', rarityClass: 'rarity-red', rarityName: 'Red', damage: 12, fireRate: 900, pellets: 8, magSize: 5, shellByShellReload: true, reloadTime: 500, speed: 1100, spread: 0.22, len: 75, icon: 'shotgun' },
+    AutoShotgun: { name: 'Auto Shotgun', rarityClass: 'rarity-red', rarityName: 'Red', damage: 9, fireRate: 320, pellets: 6, magSize: 8, reloadTime: 2500, speed: 1000, spread: 0.28, len: 70, icon: 'shotgun' },
 };
 
 function getRandomWeapon() {
@@ -205,7 +207,7 @@ armorImgs.vest[4].src = 'assets/vest_4.png';
 
 // Camera
 const camera = { x: 0, y: 0 };
-const mapSize = 4000;
+const mapSize = 5000;
 
 // Advanced Procedural Gun Drawer
 function drawProceduralGun(ctx, weaponDef, glowColor) {
@@ -241,7 +243,7 @@ class Bolita {
         this.isPlayer = isPlayer;
         this.name = name;
         this.angle = 0;
-        this.baseSpeed = isPlayer ? 250 : 150; // Nerfed AI speed (was 200)
+        this.baseSpeed = isPlayer ? 250 : 155; // Slightly faster AI (155)
         this.speedMultiplier = 1;
         this.staminaTimer = 0;
 
@@ -259,6 +261,20 @@ class Bolita {
 
         if (!isPlayer) {
             this.inventory[0] = { type: getRandomWeapon(), ammo: 999 };
+
+            // Randomized Armor Assignment for Bots:
+            // 50% No Armor, 30% Light Armor (lvl 1-2), 20% Heavy Armor (lvl 2-4)
+            const armorRoll = Math.random();
+            if (armorRoll < 0.50) {
+                this.vestLevel = 0;
+                this.helmetLevel = 0;
+            } else if (armorRoll < 0.80) {
+                this.vestLevel = Math.random() < 0.6 ? 1 : 2;
+                this.helmetLevel = Math.random() < 0.6 ? 1 : 0;
+            } else {
+                this.vestLevel = Math.floor(Math.random() * 3) + 2;
+                this.helmetLevel = Math.floor(Math.random() * 3) + 1;
+            }
         }
 
         this.reloading = false;
@@ -322,32 +338,43 @@ class Bolita {
     handleAIMovement(dt) {
         if (!this.markedForDeletion) {
             let distToPlayer = Math.hypot(player.x - this.x, player.y - this.y);
-            if (distToPlayer < 600) {
-                this.angle = Math.atan2(player.y - this.y, player.x - this.x);
+            // Increased detection range to 520px for slightly higher aggressiveness
+            if (distToPlayer < 520) {
+                let targetAngle = Math.atan2(player.y - this.y, player.x - this.x);
+
+                // Smooth turning towards player
+                this.angle = targetAngle;
+
                 // Check if a house is in the way
                 houses.forEach(h => {
                     if (this.x > h.x - 50 && this.x < h.x + h.w + 50 && this.y > h.y - 50 && this.y < h.y + h.h + 50) {
-                        // Try to walk around it if too close
-                        this.angle += Math.PI / 2; // Strafe
+                        this.angle += Math.PI / 2; // Strafe around obstacle
                     }
                 });
 
-                if (distToPlayer > 250) {
-                    this.x += Math.cos(this.angle) * this.baseSpeed * (dt / 1000);
-                    this.y += Math.sin(this.angle) * this.baseSpeed * (dt / 1000);
-                } else if (distToPlayer < 150) {
+                // Tactical movement: Strafe & approach smoothly instead of blind rush
+                const timeSec = performance.now() / 1000;
+                const strafeFactor = Math.sin(timeSec * 2 + this.x) * 0.4;
+
+                if (distToPlayer > 220) {
+                    // Approach with tactical strafe
+                    const moveAngle = this.angle + strafeFactor;
+                    this.x += Math.cos(moveAngle) * this.baseSpeed * (dt / 1000);
+                    this.y += Math.sin(moveAngle) * this.baseSpeed * (dt / 1000);
+                } else if (distToPlayer < 140) {
+                    // Retreat if player gets too close
                     this.x -= Math.cos(this.angle) * this.baseSpeed * (dt / 1000);
                     this.y -= Math.sin(this.angle) * this.baseSpeed * (dt / 1000);
                 }
                 this.handleWeapon(dt);
-            } else { // Wander if player is far
+            } else { // Wander if player is out of detection range
                 this.stateTimer += dt;
-                if (this.stateTimer > 2000) {
+                if (this.stateTimer > 2500) {
                     this.wanderAngle = Math.random() * Math.PI * 2;
                     this.stateTimer = 0;
                 }
-                this.x += Math.cos(this.wanderAngle) * this.baseSpeed * (dt / 1000);
-                this.y += Math.sin(this.wanderAngle) * this.baseSpeed * (dt / 1000);
+                this.x += Math.cos(this.wanderAngle) * (this.baseSpeed * 0.6) * (dt / 1000);
+                this.y += Math.sin(this.wanderAngle) * (this.baseSpeed * 0.6) * (dt / 1000);
                 this.angle = this.wanderAngle;
             }
         }
@@ -360,10 +387,10 @@ class Bolita {
             if (this.y < rectY) testY = rectY; else if (this.y > rectY + rectH) testY = rectY + rectH;
 
             let dist = Math.hypot(this.x - testX, this.y - testY);
-            if (dist <= this.radius) {
+            if (dist <= this.radius && dist > 0) {
                 const overlap = this.radius - dist;
-                const nx = (this.x - testX) / dist || 1;
-                const ny = (this.y - testY) / dist || 0;
+                const nx = (this.x - testX) / dist;
+                const ny = (this.y - testY) / dist;
                 this.x += nx * overlap;
                 this.y += ny * overlap;
             }
@@ -371,7 +398,7 @@ class Bolita {
 
         const checkCircleCollision = (cx, cy, cRadius) => {
             const dist = Math.hypot(this.x - cx, this.y - cy);
-            if (dist < this.radius + cRadius) {
+            if (dist < this.radius + cRadius && dist > 0) {
                 const overlap = (this.radius + cRadius) - dist;
                 const nx = (this.x - cx) / dist;
                 const ny = (this.y - cy) / dist;
@@ -380,9 +407,23 @@ class Bolita {
             }
         };
 
+        // Crates & Barrels
         crates.forEach(c => checkRectCollision(c.x, c.y, c.size, c.size));
-        trees.forEach(t => checkCircleCollision(t.x, t.y, t.radius * 0.15));
+        explosiveBarrels.forEach(b => {
+            if (!b.markedForDeletion) checkCircleCollision(b.x, b.y, b.radius);
+        });
 
+        // Interactive Map Structures
+        vendingMachines.forEach(v => checkRectCollision(v.x, v.y, v.w, v.h));
+        vaultSafes.forEach(vs => checkRectCollision(vs.x - vs.size / 2, vs.y - vs.size / 2, vs.size, vs.size));
+        radarTowers.forEach(rt => checkCircleCollision(rt.x, rt.y, rt.radius));
+        turrets.forEach(tu => checkCircleCollision(tu.x, tu.y, tu.radius));
+        contractLaptops.forEach(cl => checkCircleCollision(cl.x, cl.y, cl.radius));
+
+        // Nature (Trees Trunk)
+        trees.forEach(t => checkCircleCollision(t.x, t.y, t.radius * 0.25));
+
+        // Houses (Walls and Closed Doors)
         houses.forEach(h => {
             h.walls.forEach(w => checkRectCollision(w.x, w.y, w.w, w.h));
             h.doors.forEach(d => {
@@ -446,12 +487,14 @@ class Bolita {
                 this.reloadTimer = 0;
             }
         } else { // AI shooting logic
-            // Add reaction delay and worse aim by multiplying fireRate delay and increasing spread temporarily 
-            const aiFireRateDelay = weaponDef.fireRate * 3.5;
+            // Boosted aggressiveness for Elite Contract Boss vs regular bots
+            const aiFireRateDelay = this.isElite 
+                ? weaponDef.fireRate * 1.5 + (Math.random() * 80)
+                : weaponDef.fireRate * 3.2 + (Math.random() * 200);
 
             if (!this.reloading && weaponState.ammo > 0 && performance.now() - this.lastShot > aiFireRateDelay) {
-                // Determine inaccuracy
-                const aimError = (Math.random() - 0.5) * 0.5; // Much wider spread for bots
+                // Humanized inaccuracy (sharper aim for Elite Bot, slightly improved for normal bots)
+                const aimError = this.isElite ? (Math.random() - 0.5) * 0.10 : (Math.random() - 0.5) * 0.32;
                 const originalAngle = this.angle;
                 this.angle += aimError;
 
@@ -594,15 +637,47 @@ class Bolita {
         }
     }
 
-    tryOpenDoor() {
-        houses.forEach(h => {
-            h.doors.forEach(d => {
-                // Check if player is near the door
-                if (Math.hypot(this.x - (d.x + d.w / 2), this.y - (d.y + d.h / 2)) < this.radius + 60) {
-                    d.isOpen = !d.isOpen; // Toggle door state
-                }
-            });
+    tryInteract() {
+        let interacted = false;
+
+        // Radar Towers
+        radarTowers.forEach(t => {
+            if (!interacted && Math.hypot(this.x - t.x, this.y - t.y) < this.radius + t.radius + 25) {
+                t.activate(); interacted = true;
+            }
         });
+
+        // Contract Laptops
+        contractLaptops.forEach(l => {
+            if (!interacted && Math.hypot(this.x - l.x, this.y - l.y) < this.radius + l.radius + 25) {
+                l.activate(); interacted = true;
+            }
+        });
+
+        // Vending Machines
+        vendingMachines.forEach(v => {
+            if (!interacted && Math.hypot(this.x - (v.x + v.w / 2), this.y - (v.y + v.h / 2)) < this.radius + v.radius + 25) {
+                v.activate(); interacted = true;
+            }
+        });
+
+        // Allied Turrets
+        turrets.forEach(tu => {
+            if (!interacted && Math.hypot(this.x - tu.x, this.y - tu.y) < this.radius + tu.radius + 25) {
+                tu.activate(); interacted = true;
+            }
+        });
+
+        // Doors
+        if (!interacted) {
+            houses.forEach(h => {
+                h.doors.forEach(d => {
+                    if (Math.hypot(this.x - (d.x + d.w / 2), this.y - (d.y + d.h / 2)) < this.radius + 60) {
+                        d.isOpen = !d.isOpen; interacted = true;
+                    }
+                });
+            });
+        }
     }
 
     drawWeaponSpriteTinted(ctx, weaponDef, x, y, angle, showHands = false) {
@@ -727,9 +802,9 @@ class Bolita {
             ctx.restore();
         }
 
-        // Draw Username label
-        if (this.name) {
-            ctx.fillStyle = this.isPlayer ? '#ffffff' : '#ffaaaa';
+        // Draw Username label ONLY for player or Elite boss (no labels on normal bots)
+        if (this.name && (this.isPlayer || this.isElite)) {
+            ctx.fillStyle = this.isPlayer ? '#ffffff' : '#a855f7';
             ctx.font = 'bold 16px Roboto, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
@@ -738,31 +813,70 @@ class Bolita {
             ctx.fillText(this.name, this.x, this.y + this.radius + 15);
             ctx.shadowBlur = 0; // Reset
         }
+
+        // Overhead Health Bar for Enemy Bots when damaged
+        if (!this.isPlayer && this.health < this.maxHealth && this.health > 0) {
+            const barWidth = 36;
+            const barHeight = 5;
+            const bx = this.x - barWidth / 2;
+            const by = this.y - this.radius - 12;
+            const hpRatio = Math.max(0, this.health / this.maxHealth);
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.fillRect(bx - 1, by - 1, barWidth + 2, barHeight + 2);
+
+            ctx.fillStyle = hpRatio > 0.5 ? '#2ecc71' : (hpRatio > 0.25 ? '#f1c40f' : '#e74c3c');
+            ctx.fillRect(bx, by, barWidth * hpRatio, barHeight);
+
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(bx - 1, by - 1, barWidth + 2, barHeight + 2);
+            ctx.restore();
+        }
     }
 
-    takeDamage(baseDamage) {
-        // Base Mitigation
+    takeDamage(baseDamage, hitType = 'body') {
         let finalDamage = baseDamage;
 
-        // AWP completely ignores armor calculations
-        if (baseDamage < 1000) {
-            // Stacked mitigation calculations. Combined Level 4 = ~50% damage reduction.
-            const vestMultiplier = [1.0, 0.92, 0.85, 0.77, 0.70];
-            const helmetMultiplier = [1.0, 0.92, 0.85, 0.77, 0.70];
+        // Armor mitigation calculations
+        const vestMultiplier = [1.0, 0.90, 0.80, 0.70, 0.60];
+        const helmetMultiplier = [1.0, 0.80, 0.65, 0.50, 0.35];
 
-            finalDamage = baseDamage * vestMultiplier[this.vestLevel] * helmetMultiplier[this.helmetLevel];
+        let isHeadshot = (hitType === 'head');
+        let textColor = '#ffffff';
+        let fontSize = 16;
+
+        if (baseDamage >= 200) {
+            // AWP Insta-kill: Ignores armor and hit zones, guaranteed 1-shot kill
+            finalDamage = baseDamage;
+            textColor = '#ff2222';
+            fontSize = 24;
+            isHeadshot = true;
+        } else if (isHeadshot) {
+            const hMult = helmetMultiplier[this.helmetLevel || 0] || 1.0;
+            finalDamage = baseDamage * hMult;
+            textColor = '#ffcc00'; // Gold for headshots
+            fontSize = 20;
+        } else if (hitType === 'leg') {
+            finalDamage = baseDamage * 0.85;
+            textColor = '#dcdcdc';
+            fontSize = 14;
+        } else {
+            const vMult = vestMultiplier[this.vestLevel || 0] || 1.0;
+            finalDamage = baseDamage * vMult;
+            textColor = (this.vestLevel > 0) ? '#33b5e5' : '#ffffff'; // Cyan if armor absorbed, White if flesh
         }
 
+        finalDamage = Math.max(1, Math.round(finalDamage * 10) / 10);
         this.health -= finalDamage;
+
+        // Visual floating damage text
+        createFloatingText(this.x, this.y, `-${Math.round(finalDamage)}`, textColor, fontSize, isHeadshot);
 
         if (this.isPlayer) updateUI();
 
-        // Red flash
-        const oldColor = this.color;
-        this.color = '#fff';
-        setTimeout(() => { if (!this.markedForDeletion) this.color = oldColor; }, 50);
-
-        createParticles(this.x, this.y, '#ff0000', 5, true);
+        createParticles(this.x, this.y, isHeadshot ? '#ffff00' : '#ff0000', 5, true);
 
         if (this.health <= 0) {
             this.markedForDeletion = true;
@@ -780,10 +894,15 @@ class Bolita {
             } else {
                 kills++;
                 killPoints++;
-                hordeEnemiesRemaining = Math.max(0, hordeEnemiesRemaining - 1);
-                if (hordeEnemiesRemaining === 0 && isHordeActive) {
+                const remainingEnemies = enemies.filter(e => !e.markedForDeletion && e !== this).length;
+                hordeEnemiesRemaining = remainingEnemies;
+                if (remainingEnemies === 0 && isHordeActive) {
                     isHordeActive = false;
                     hordeCooldownTimer = 10000; // 10 seconds break
+                    enemies = []; // Clear map completely during round transition
+                    if (!player.markedForDeletion) {
+                        createFloatingText(player.x, player.y - 40, "¡HORDA COMPLETADA!", "#00ff00", 26, true);
+                    }
                 }
                 updateUI();
             }
@@ -801,7 +920,7 @@ class Bullet {
         this.life = 1000;
         this.markedForDeletion = false;
         this.color = isPlayer ? '#ffff00' : '#ff4444';
-        this.damage = damage; // Fix bug: Inherit real weapon stats
+        this.damage = damage;
     }
     update(dt) {
         this.x += this.vx * (dt / 1000);
@@ -817,30 +936,26 @@ class Bullet {
                 if (!this.markedForDeletion && Math.hypot(this.x - t.x, this.y - t.y) < t.radius) {
                     this.markedForDeletion = true;
 
-                    let finalHitDamage = this.damage;
-
-                    // Positional hit detection for AWP (damage >= 1000)
-                    if (this.damage >= 1000) {
-                        const distToCenter = Math.hypot(this.x - t.x, this.y - t.y);
-                        const isHeadshot = distToCenter < 15; // Inner 15px is considered the head
-
-                        if (!isHeadshot) {
-                            // Bodyshot logic: 87 damage regardless of armor, unless level 1 armor -> 100 damage
-                            if ((t.helmetLevel === 1 && t.vestLevel === 1) || Math.max(t.helmetLevel, t.vestLevel) === 1) {
-                                finalHitDamage = 100;
-                            } else {
-                                finalHitDamage = 87;
-                            }
-                        }
-                    }
-
-                    // Balance difficulty: NPCs deal 50% less damage than the player
+                    let baseDmg = this.damage;
+                    // NPC scaling: NPCs deal 65% damage to player
                     if (!this.isPlayer) {
-                        finalHitDamage = finalHitDamage * 0.5;
+                        baseDmg = baseDmg * 0.65;
                     }
 
-                    t.takeDamage(finalHitDamage);
-                    createParticles(this.x, this.y, '#cc0000', 6, true);
+                    const distToCenter = Math.hypot(this.x - t.x, this.y - t.y);
+                    let hitType = 'body';
+                    let damageMult = 1.0;
+
+                    if (distToCenter < t.radius * 0.35) {
+                        hitType = 'head';
+                        // Snipers get 2.0x headshot mult, others 1.5x
+                        damageMult = (this.damage >= 60) ? 2.0 : 1.5;
+                    } else if (distToCenter > t.radius * 0.75) {
+                        hitType = 'leg';
+                    }
+
+                    t.takeDamage(baseDmg * damageMult, hitType);
+                    createParticles(this.x, this.y, hitType === 'head' ? '#ffcc00' : '#cc0000', 6, true);
                 }
             });
         }
@@ -851,6 +966,77 @@ class Bullet {
                     this.markedForDeletion = true;
                     c.takeDamage(this.damage);
                     createParticles(this.x, this.y, '#d2b48c', 4);
+                }
+            });
+        }
+
+        // Collide with Explosive Barrels
+        if (!this.markedForDeletion) {
+            explosiveBarrels.forEach(b => {
+                if (!b.markedForDeletion && Math.hypot(this.x - b.x, this.y - b.y) < this.radius + b.radius) {
+                    this.markedForDeletion = true;
+                    b.takeDamage(this.damage);
+                    createParticles(this.x, this.y, '#ff4400', 4);
+                }
+            });
+        }
+
+        // Collide with Vending Machines
+        if (!this.markedForDeletion) {
+            vendingMachines.forEach(v => {
+                if (this.x > v.x && this.x < v.x + v.w && this.y > v.y && this.y < v.y + v.h) {
+                    this.markedForDeletion = true;
+                    createParticles(this.x, this.y, '#0284c7', 4);
+                }
+            });
+        }
+
+        // Collide with Vault Safes
+        if (!this.markedForDeletion) {
+            vaultSafes.forEach(vs => {
+                if (this.x > vs.x - vs.size / 2 && this.x < vs.x + vs.size / 2 && this.y > vs.y - vs.size / 2 && this.y < vs.y + vs.size / 2) {
+                    this.markedForDeletion = true;
+                    createParticles(this.x, this.y, '#636e72', 4);
+                }
+            });
+        }
+
+        // Collide with Radar Towers
+        if (!this.markedForDeletion) {
+            radarTowers.forEach(rt => {
+                if (Math.hypot(this.x - rt.x, this.y - rt.y) < rt.radius) {
+                    this.markedForDeletion = true;
+                    createParticles(this.x, this.y, '#00ffff', 4);
+                }
+            });
+        }
+
+        // Collide with Turrets
+        if (!this.markedForDeletion) {
+            turrets.forEach(tu => {
+                if (Math.hypot(this.x - tu.x, this.y - tu.y) < tu.radius) {
+                    this.markedForDeletion = true;
+                    createParticles(this.x, this.y, '#4b6584', 4);
+                }
+            });
+        }
+
+        // Collide with Contract Laptops
+        if (!this.markedForDeletion) {
+            contractLaptops.forEach(cl => {
+                if (Math.hypot(this.x - cl.x, this.y - cl.y) < cl.radius) {
+                    this.markedForDeletion = true;
+                    createParticles(this.x, this.y, '#00ffcc', 4);
+                }
+            });
+        }
+
+        // Collide with Tree Trunks
+        if (!this.markedForDeletion) {
+            trees.forEach(t => {
+                if (Math.hypot(this.x - t.x, this.y - t.y) < t.radius * 0.25) {
+                    this.markedForDeletion = true;
+                    createParticles(this.x, this.y, '#3e2723', 4);
                 }
             });
         }
@@ -891,6 +1077,7 @@ class Crate {
     }
     takeDamage(amt) {
         this.health -= amt;
+        createFloatingText(this.x + this.size / 2, this.y + this.size / 2, `-${Math.round(amt)}`, '#d2b48c', 14);
         if (this.health <= 0) {
             this.markedForDeletion = true;
             createParticles(this.x + this.size / 2, this.y + this.size / 2, '#8b6f4e', 25);
@@ -1128,13 +1315,19 @@ class Bomb {
 
         // Damage enemies
         enemies.forEach(e => {
-            if (Math.hypot(this.x - e.x, this.y - e.y) < this.maxRadius) {
-                e.takeDamage(1000); // Nuke insta-kills
+            const dist = Math.hypot(this.x - e.x, this.y - e.y);
+            if (dist < this.maxRadius) {
+                const falloff = 1 - (dist / this.maxRadius);
+                const explosionDmg = 30 + falloff * 70; // 30-100 damage depending on proximity
+                e.takeDamage(explosionDmg, 'body');
             }
         });
         // Damage player
-        if (Math.hypot(this.x - player.x, this.y - player.y) < this.maxRadius) {
-            player.takeDamage(1000); // Nuke insta-kills
+        const playerDist = Math.hypot(this.x - player.x, this.y - player.y);
+        if (playerDist < this.maxRadius) {
+            const falloff = 1 - (playerDist / this.maxRadius);
+            const explosionDmg = 30 + falloff * 70;
+            player.takeDamage(explosionDmg, 'body');
         }
         // Destroy crates
         crates.forEach(c => {
@@ -1292,35 +1485,36 @@ class Tree {
         ctx.save();
         ctx.translate(this.x, this.y);
 
+        // Dynamic alpha: If player is underneath tree canopy, fade to 0.4 so player is visible, otherwise solid vibrant 0.95!
+        const distToPlayer = player ? Math.hypot(player.x - this.x, player.y - this.y) : 999;
+        ctx.globalAlpha = distToPlayer < this.radius ? 0.45 : 0.95;
+
         // Shadow under tree
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
         ctx.beginPath();
-        this.points.forEach(p => ctx.lineTo(p.x + 10, p.y + 10)); // Offset shadow
+        this.points.forEach(p => ctx.lineTo(p.x + 12, p.y + 12));
         ctx.closePath();
         ctx.fill();
 
-        ctx.globalAlpha = 0.5; // Highly transparent so we can see under
-
-        // Dark green base border
-        ctx.fillStyle = '#3a5f22';
+        // Dark green base canopy border
+        ctx.fillStyle = '#2d5016';
         ctx.beginPath();
         this.points.forEach(p => ctx.lineTo(p.x, p.y));
         ctx.closePath();
         ctx.fill();
 
-        // Lighter green top foliage
+        // Rich green middle foliage
         ctx.fillStyle = '#4c7a2d';
         ctx.beginPath();
-        this.points.forEach(p => ctx.lineTo(p.x * 0.8, p.y * 0.8));
+        this.points.forEach(p => ctx.lineTo(p.x * 0.82, p.y * 0.82));
         ctx.closePath();
         ctx.fill();
 
-        ctx.globalAlpha = 1.0; // Reset alpha for solid trunk
-
-        // Central trunk highlight (optional but adds depth)
-        ctx.fillStyle = '#3E2723';
+        // Top bright highlight foliage
+        ctx.fillStyle = '#5c9337';
         ctx.beginPath();
-        ctx.arc(0, 0, this.radius * 0.15, 0, Math.PI * 2);
+        this.points.forEach(p => ctx.lineTo(p.x * 0.6, p.y * 0.6));
+        ctx.closePath();
         ctx.fill();
 
         ctx.restore();
@@ -1374,10 +1568,298 @@ let armors = [];
 let bombs = [];
 let droppedWeapons = [];
 let particles = [];
+let floatingTexts = [];
 let houses = [];
 let trees = [];
 let bushes = [];
+let radarTowers = [];
+let contractLaptops = [];
+let vendingMachines = [];
+let vaultSafes = [];
+let explosiveBarrels = [];
+let turrets = [];
+let activeRadarTimer = 0;
+let activeContract = null;
 let gameLoopId;
+
+class RadarTower {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.radius = 35;
+        this.cooldown = 0;
+    }
+    update(dt) {
+        if (this.cooldown > 0) this.cooldown -= dt;
+    }
+    activate() {
+        if (this.cooldown <= 0) {
+            activeRadarTimer = 15000;
+            this.cooldown = 35000;
+            createFloatingText(this.x, this.y - 20, "📡 RADAR ACTIVADO (15s)", "#00ffff", 20, true);
+            createParticles(this.x, this.y, "#00ffff", 25);
+        } else {
+            createFloatingText(this.x, this.y - 20, `⏳ EN RECARGA (${(this.cooldown/1000).toFixed(0)}s)`, "#ff4444", 16);
+        }
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.fillStyle = '#444'; ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.fillStyle = this.cooldown <= 0 ? '#00e5ff' : '#888';
+        ctx.beginPath(); ctx.arc(0, -5, 18, Math.PI, 0); ctx.fill();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(0, -30); ctx.stroke();
+        ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(0, -32, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+}
+
+class ContractLaptop {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.radius = 22;
+        this.active = true;
+    }
+    activate() {
+        if (!this.active) return;
+        const liveBots = enemies.filter(e => !e.markedForDeletion);
+        if (liveBots.length === 0) {
+            createFloatingText(this.x, this.y - 20, "❌ NO HAY BOTS EN EL MAPA", "#ff4444", 16);
+            return;
+        }
+        const target = liveBots[Math.floor(Math.random() * liveBots.length)];
+        target.isElite = true;
+        target.color = '#8b5cf6'; // Glowing purple
+        target.health = 300; // High HP boss (300 HP)
+        target.maxHealth = 300;
+        target.vestLevel = 4; // Lv4 Vest
+        target.helmetLevel = 4; // Lv4 Helmet
+        target.baseSpeed = 175; // Fast tactical speed
+        target.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
+        target.name = "👑 ☠️ BOT ÉLITE SUPREMO";
+
+        activeContract = { target: target, rewardKills: 5 };
+        this.active = false;
+        createFloatingText(player.x, player.y - 40, "☠️ CONTRATO ACTIVADO: BOT ÉLITE SUPREMO (300 HP)", "#a855f7", 22, true);
+        createParticles(this.x, this.y, "#a855f7", 35);
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.fillStyle = this.active ? '#111' : '#444'; ctx.fillRect(-15, -10, 30, 20);
+        ctx.fillStyle = this.active ? '#00ffcc' : '#666'; ctx.fillRect(-12, -22, 24, 14);
+        ctx.restore();
+    }
+}
+
+class VendingMachine {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = 40; this.h = 55; this.radius = 30;
+        this.selectedOption = 0;
+        this.options = [
+            { name: 'Medkit Full HP', cost: 2, type: 'heal' },
+            { name: 'Chaleco & Casco Lv4', cost: 3, type: 'armor' },
+            { name: 'Sniper AWP', cost: 4, type: 'awp' }
+        ];
+    }
+    activate() {
+        const opt = this.options[this.selectedOption];
+        if (killPoints >= opt.cost) {
+            killPoints -= opt.cost;
+            if (opt.type === 'heal') {
+                player.health = player.maxHealth;
+                createParticles(player.x, player.y, '#00ff00', 30);
+            } else if (opt.type === 'armor') {
+                player.vestLevel = 4;
+                player.helmetLevel = 4;
+                createParticles(player.x, player.y, '#00ffff', 30);
+            } else if (opt.type === 'awp') {
+                player.inventory[player.activeSlotIndex] = { type: WEAPONS.AWP, ammo: WEAPONS.AWP.magSize };
+                createParticles(player.x, player.y, '#ffff00', 30);
+            }
+            updateUI();
+            createFloatingText(this.x + 20, this.y - 20, `🛒 COMPRADO: ${opt.name}`, '#00ff00', 18, true);
+            this.selectedOption = (this.selectedOption + 1) % this.options.length;
+        } else {
+            createFloatingText(this.x + 20, this.y - 20, `❌ FALTAN KILLS (Requiere ${opt.cost})`, '#ff3333', 16);
+            this.selectedOption = (this.selectedOption + 1) % this.options.length;
+        }
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.fillStyle = '#1e272e'; ctx.fillRect(0, 0, this.w, this.h);
+        ctx.strokeStyle = '#ffdd59'; ctx.lineWidth = 2; ctx.strokeRect(0, 0, this.w, this.h);
+        ctx.fillStyle = '#0284c7'; ctx.fillRect(5, 5, this.w - 10, 25);
+        ctx.fillStyle = '#ffdd59'; ctx.font = 'bold 10px Roboto'; ctx.fillText("SHOP", 10, 20);
+        ctx.restore();
+    }
+}
+
+class VaultSafe {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.size = 45; this.radius = 35;
+        this.hackProgress = 0;
+        this.isHacked = false;
+    }
+    hack(dt) {
+        if (this.isHacked) return;
+        this.hackProgress += (dt / 1000) * 45;
+        if (this.hackProgress >= 100) {
+            this.isHacked = true;
+            this.hackProgress = 100;
+            droppedWeapons.push(new DroppedWeapon(this.x + 20, this.y + 20, WEAPONS.AWP, 0));
+            droppedWeapons.push(new DroppedWeapon(this.x - 20, this.y + 20, WEAPONS.AutoShotgun, 0));
+            armors.push(new ArmorLoot(this.x, this.y + 30, 4, false));
+            loots.push(new Loot(this.x + 30, this.y));
+            createParticles(this.x, this.y, '#00ff00', 40);
+            createFloatingText(this.x, this.y - 20, "🔓 BÚNKER HACKEADO", "#00ff00", 22, true);
+        }
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.fillStyle = this.isHacked ? '#2d3436' : '#636e72';
+        ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+        ctx.strokeStyle = this.isHacked ? '#00b894' : '#d63031';
+        ctx.lineWidth = 3; ctx.strokeRect(-this.size/2, -this.size/2, this.size, this.size);
+        
+        if (!this.isHacked && this.hackProgress > 0) {
+            ctx.fillStyle = '#00b894';
+            ctx.fillRect(-this.size/2, this.size/2 + 4, (this.size * this.hackProgress) / 100, 5);
+        }
+        ctx.restore();
+    }
+}
+
+class ExplosiveBarrel {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.radius = 18;
+        this.health = 25;
+        this.markedForDeletion = false;
+    }
+    takeDamage(amt) {
+        this.health -= amt;
+        createFloatingText(this.x, this.y, `-${Math.round(amt)}`, '#ff4444', 14);
+        if (this.health <= 0) {
+            this.explode();
+        }
+    }
+    explode() {
+        if (this.markedForDeletion) return;
+        this.markedForDeletion = true;
+        createParticles(this.x, this.y, '#ff4400', 35);
+        createParticles(this.x, this.y, '#ffff00', 25);
+        createParticles(this.x, this.y, '#333333', 20);
+
+        const expRadius = 170;
+        enemies.forEach(e => {
+            if (Math.hypot(this.x - e.x, this.y - e.y) < expRadius) {
+                e.takeDamage(90, 'body');
+            }
+        });
+        if (Math.hypot(this.x - player.x, this.y - player.y) < expRadius) {
+            player.takeDamage(75, 'body');
+        }
+        crates.forEach(c => {
+            if (Math.hypot(this.x - (c.x + c.size / 2), this.y - (c.y + c.size / 2)) < expRadius) {
+                c.takeDamage(100);
+            }
+        });
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.fillStyle = '#d63031'; ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#2d3436'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.fillStyle = '#ffdd59'; ctx.font = 'bold 12px Roboto'; ctx.fillText("🔥", -6, 4);
+        ctx.restore();
+    }
+}
+
+class Turret {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.radius = 28;
+        this.isActive = false;
+        this.angle = 0;
+        this.lastShot = 0;
+    }
+    activate() {
+        this.isActive = true;
+        createFloatingText(this.x, this.y - 20, "🤖 TORRETA ALIADA ACTIVADA", "#00ff00", 20, true);
+        createParticles(this.x, this.y, "#00ff00", 25);
+    }
+    update(dt) {
+        if (!this.isActive) return;
+        const liveEnemies = enemies.filter(e => !e.markedForDeletion);
+        let nearest = null;
+        let minDist = 420;
+        liveEnemies.forEach(e => {
+            const d = Math.hypot(e.x - this.x, e.y - this.y);
+            if (d < minDist) { minDist = d; nearest = e; }
+        });
+
+        if (nearest) {
+            this.angle = Math.atan2(nearest.y - this.y, nearest.x - this.x);
+            if (performance.now() - this.lastShot > 220) {
+                this.lastShot = performance.now();
+                bullets.push(new Bullet(this.x, this.y, this.angle, true, 1400, 24));
+                createParticles(this.x, this.y, '#ffff00', 3);
+            }
+        }
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.fillStyle = '#4b6584'; ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = this.isActive ? '#20bf6b' : '#eb3b5a'; ctx.lineWidth = 3; ctx.stroke();
+
+        ctx.rotate(this.angle);
+        ctx.fillStyle = '#26de81'; ctx.fillRect(0, -4, 26, 8);
+        ctx.restore();
+    }
+}
+
+class FloatingText {
+    constructor(x, y, text, color = '#ffffff', fontSize = 16, isHeadshot = false) {
+        this.x = x + (Math.random() * 16 - 8);
+        this.y = y - 10;
+        this.text = text;
+        this.color = color;
+        this.fontSize = fontSize;
+        this.isHeadshot = isHeadshot;
+        this.life = 750;
+        this.maxLife = 750;
+        this.vy = -35;
+        this.vx = (Math.random() * 20 - 10);
+        this.markedForDeletion = false;
+    }
+    update(dt) {
+        this.life -= dt;
+        const sec = dt / 1000;
+        this.x += this.vx * sec;
+        this.y += this.vy * sec;
+        if (this.life <= 0) this.markedForDeletion = true;
+    }
+    draw(ctx) {
+        ctx.save();
+        const alpha = Math.max(0, this.life / this.maxLife);
+        ctx.globalAlpha = alpha;
+        ctx.font = `900 ${this.isHeadshot ? Math.round(this.fontSize * 1.3) : this.fontSize}px 'Roboto', sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 4;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#000';
+        ctx.strokeText(this.text, this.x, this.y);
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.restore();
+    }
+}
+
+function createFloatingText(x, y, text, color, fontSize, isHeadshot) {
+    floatingTexts.push(new FloatingText(x, y, text, color, fontSize, isHeadshot));
+}
 
 // Horde Variables
 let currentHorde = 1;
@@ -1492,9 +1974,42 @@ function updateUI() {
         });
     });
 
-    if (anyWeaponNear && anyDoorNear) promptMsg = "Press [F] Pick Up | [E] Door";
-    else if (anyWeaponNear) promptMsg = "Press [F] to Pick Up";
-    else if (anyDoorNear) promptMsg = "Press [E] to Toggle Door";
+    radarTowers.forEach(t => {
+        if (Math.hypot(player.x - t.x, player.y - t.y) < player.radius + t.radius + 25) {
+            promptMsg = t.cooldown <= 0 ? "Press [E] to Activate Radar Scan" : `Radar Cooling Down (${(t.cooldown/1000).toFixed(0)}s)`;
+        }
+    });
+
+    contractLaptops.forEach(l => {
+        if (l.active && Math.hypot(player.x - l.x, player.y - l.y) < player.radius + l.radius + 25) {
+            promptMsg = "Press [E] Accept Bounty Contract (☠️)";
+        }
+    });
+
+    vendingMachines.forEach(v => {
+        if (Math.hypot(player.x - (v.x + v.w / 2), player.y - (v.y + v.h / 2)) < player.radius + v.radius + 25) {
+            const opt = v.options[v.selectedOption];
+            promptMsg = `Press [E] Buy: ${opt.name} (${opt.cost} Kills)`;
+        }
+    });
+
+    vaultSafes.forEach(vs => {
+        if (!vs.isHacked && Math.hypot(player.x - vs.x, player.y - vs.y) < player.radius + vs.radius + 25) {
+            promptMsg = `Hold [E] Hack Vault Safe (${Math.round(vs.hackProgress)}%)`;
+        }
+    });
+
+    turrets.forEach(tu => {
+        if (!tu.isActive && Math.hypot(player.x - tu.x, player.y - tu.y) < player.radius + tu.radius + 25) {
+            promptMsg = "Press [E] Power Up Allied Turret (🤖)";
+        }
+    });
+
+    if (!promptMsg) {
+        if (anyWeaponNear && anyDoorNear) promptMsg = "Press [F] Pick Up | [E] Door";
+        else if (anyWeaponNear) promptMsg = "Press [F] to Pick Up";
+        else if (anyDoorNear) promptMsg = "Press [E] to Toggle Door";
+    }
 
     if (promptMsg) {
         promptText.textContent = promptMsg;
@@ -1549,12 +2064,53 @@ function updateUI() {
     });
 }
 
-function initGame() {
+function getValidSpawnPos(minDist = 140) {
+    let px, py, valid;
+    let attempts = 0;
+    const margin = 350;
+
+    do {
+        px = margin + Math.random() * (mapSize - margin * 2);
+        py = margin + Math.random() * (mapSize - margin * 2);
+        valid = true;
+
+        // Check distance to Houses (Generous 160px padding outside house walls)
+        for (let h of houses) {
+            if (px > h.x - 160 && px < h.x + h.w + 160 && py > h.y - 160 && py < h.y + h.h + 160) {
+                valid = false; break;
+            }
+        }
+
+        // Check distance to all existing objects (prevent overlaps between crates, barrels, machines, towers, etc.)
+        if (valid) {
+            const allEntities = [
+                ...radarTowers, ...contractLaptops, ...vendingMachines, 
+                ...vaultSafes, ...turrets, ...explosiveBarrels, 
+                ...crates, ...trees
+            ];
+            for (let e of allEntities) {
+                const ex = e.x + (e.w ? e.w / 2 : e.size ? e.size / 2 : 0);
+                const ey = e.y + (e.h ? e.h / 2 : e.size ? e.size / 2 : 0);
+                if (Math.hypot(px - ex, py - ey) < minDist) {
+                    valid = false; break;
+                }
+            }
+        }
+
+        attempts++;
+    } while (!valid && attempts < 150);
+
+    return { x: px, y: py, valid };
+}
+
+function initGame(mode = 'solo') {
     const nameInput = document.getElementById('player-name').value.trim();
     const playerName = nameInput || "Player 1";
 
-    player = new Bolita(mapSize / 2, mapSize / 2, '#f5d0b5', true, playerName); // Skin tone
-    bullets = []; enemies = []; crates = []; loots = []; armors = []; bombs = []; droppedWeapons = []; particles = []; houses = []; trees = []; bushes = [];
+    player = new Bolita(mapSize / 2, mapSize / 2, '#f5d0b5', true, playerName);
+    bullets = []; enemies = []; crates = []; loots = []; armors = []; bombs = []; droppedWeapons = []; particles = []; floatingTexts = []; houses = []; trees = []; bushes = [];
+    radarTowers = []; contractLaptops = []; vendingMachines = []; vaultSafes = []; explosiveBarrels = []; turrets = [];
+    activeRadarTimer = 0; activeContract = null;
     kills = 0; killPoints = 0;
     currentHorde = 1;
     hordeCooldownTimer = 0;
@@ -1563,79 +2119,88 @@ function initGame() {
     showInventory = true;
     interactPrompt.classList.add('hidden');
 
-    // Show HUD
     document.body.classList.remove('in-menu');
 
-    // Spawn houses (need to be before UI update and crate spawn)
-    houses.push(new House(mapSize / 2 + 300, mapSize / 2 - 200, 600, 400));
-    houses.push(new House(mapSize / 2 - 800, mapSize / 2 + 300, 500, 500));
-    houses.push(new House(400, 400, 600, 500));
-    houses.push(new House(mapSize - 1000, mapSize - 1000, 700, 600));
-
-    updateUI();
-
-    // Spawn crates outside
-    for (let i = 0; i < 80; i++) {
-        let cx, cy;
+    // Procedural Houses Spawn with strict 550px minimum distance ratio
+    const numHouses = 5 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < numHouses; i++) {
+        let hw = 450 + Math.random() * 200;
+        let hh = 400 + Math.random() * 200;
         let valid = false;
         let attempts = 0;
+        let hx, hy;
 
-        while (!valid && attempts < 50) {
+        while (!valid && attempts < 120) {
+            hx = 400 + Math.random() * (mapSize - 1200);
+            hy = 400 + Math.random() * (mapSize - 1200);
             valid = true;
-            cx = Math.random() * (mapSize - 200);
-            cy = Math.random() * (mapSize - 200);
 
-            // House check
-            houses.forEach(h => {
-                if (cx < h.x + h.w + 50 && cx + 140 > h.x - 50 && cy < h.y + h.h + 50 && cy + 140 > h.y - 50) {
-                    valid = false;
+            for (let existingH of houses) {
+                // Ensure houses do not spawn close to each other (minimum 550px clearance)
+                if (hx + hw + 550 > existingH.x && hx < existingH.x + existingH.w + 550 &&
+                    hy + hh + 550 > existingH.y && hy < existingH.y + existingH.h + 550) {
+                    valid = false; break;
                 }
-            });
-
-            // Distance check from other crates
-            if (valid) {
-                crates.forEach(c => {
-                    if (cx < c.x + 140 && cx + 140 > c.x && cy < c.y + 140 && cy + 140 > c.y) {
-                        valid = false;
-                    }
-                });
             }
             attempts++;
         }
 
-        if (valid) crates.push(new Crate(cx, cy));
+        if (valid) {
+            houses.push(new House(hx, hy, hw, hh));
+        }
     }
 
-    // Spawn environment details
-    for (let i = 0; i < 40; i++) {
-        let tx, ty;
-        let valid = false;
-        while (!valid) {
-            tx = Math.random() * mapSize;
-            ty = Math.random() * mapSize;
-            valid = true;
-            houses.forEach(h => {
-                if (tx > h.x - 180 && tx < h.x + h.w + 180 && ty > h.y - 180 && ty < h.y + h.h + 180) {
-                    valid = false;
-                }
-            });
-        }
-        trees.push(new Tree(tx, ty));
+    updateUI();
+
+    // Procedural Interactive Objects Spawn (Guaranteed no overlaps)
+    for (let i = 0; i < 3; i++) {
+        let pos = getValidSpawnPos(200);
+        if (pos.valid) radarTowers.push(new RadarTower(pos.x, pos.y));
     }
+
+    for (let i = 0; i < 3; i++) {
+        let pos = getValidSpawnPos(200);
+        if (pos.valid) contractLaptops.push(new ContractLaptop(pos.x, pos.y));
+    }
+
+    for (let i = 0; i < 3; i++) {
+        let pos = getValidSpawnPos(200);
+        if (pos.valid) vendingMachines.push(new VendingMachine(pos.x, pos.y));
+    }
+
+    for (let i = 0; i < 3; i++) {
+        let pos = getValidSpawnPos(200);
+        if (pos.valid) vaultSafes.push(new VaultSafe(pos.x, pos.y));
+    }
+
+    for (let i = 0; i < 3; i++) {
+        let pos = getValidSpawnPos(200);
+        if (pos.valid) turrets.push(new Turret(pos.x, pos.y));
+    }
+
+    // Spawn crates cleanly separated first (minDist 150px)
     for (let i = 0; i < 60; i++) {
-        let bx, by;
-        let valid = false;
-        while (!valid) {
-            bx = Math.random() * mapSize;
-            by = Math.random() * mapSize;
-            valid = true;
-            houses.forEach(h => {
-                if (bx > h.x - 80 && bx < h.x + h.w + 80 && by > h.y - 80 && by < h.y + h.h + 80) {
-                    valid = false;
-                }
-            });
-        }
-        bushes.push(new Bush(bx, by));
+        let pos = getValidSpawnPos(150);
+        if (pos.valid) crates.push(new Crate(pos.x, pos.y));
+    }
+
+    // Spawn explosive barrels after crates with strict 180px clearance (guarantees no barrels on crates)
+    for (let i = 0; i < 25; i++) {
+        let pos = getValidSpawnPos(180);
+        if (pos.valid) explosiveBarrels.push(new ExplosiveBarrel(pos.x, pos.y));
+    }
+
+    // Spawn fewer, well-spaced trees (35 to 45 trees max)
+    const numTrees = 35 + Math.floor(Math.random() * 10);
+    for (let i = 0; i < numTrees; i++) {
+        let pos = getValidSpawnPos(160);
+        if (pos.valid) trees.push(new Tree(pos.x, pos.y));
+    }
+
+    // Spawn bushes
+    for (let i = 0; i < 45; i++) {
+        let pos = getValidSpawnPos(110);
+        if (pos.valid) bushes.push(new Bush(pos.x, pos.y));
     }
 
     // Spawn initial enemies
@@ -1652,17 +2217,19 @@ function initGame() {
 
 function startHorde() {
     isHordeActive = true;
-    hordeEnemiesRemaining = 30; // 30 enemies per horde
+    enemies = []; // Clear any residual enemies
+    const enemyCount = 25;
+    hordeEnemiesRemaining = enemyCount;
 
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < enemyCount; i++) {
         let ex, ey;
         do {
             ex = Math.random() * mapSize;
             ey = Math.random() * mapSize;
-        } while (Math.hypot(ex - (mapSize / 2), ey - (mapSize / 2)) < 800 ||
-        ex < 200 || ex > mapSize - 200 || ey < 200 || ey > mapSize - 200); // Try to spawn towards the edges somewhat
+        } while (Math.hypot(ex - player.x, ey - player.y) < 600 ||
+        ex < 200 || ex > mapSize - 200 || ey < 200 || ey > mapSize - 200);
 
-        enemies.push(new Bolita(ex, ey, '#d44e4e', false, ""));
+        enemies.push(new Bolita(ex, ey, '#d44e4e', false, `Bot ${i + 1}`));
     }
     updateUI();
 }
@@ -1695,34 +2262,6 @@ function spawnGlobalCrate() {
     if (valid) crates.push(new Crate(cx, cy));
 }
 
-function checkHits() {
-    bullets.forEach(b => {
-        if (b.markedForDeletion) return;
-
-        let hitTree = false;
-        trees.forEach(t => {
-            if (Math.hypot(b.x - t.x, b.y - t.y) < b.radius + (t.radius * 0.15)) {
-                b.markedForDeletion = true;
-                hitTree = true;
-            }
-        });
-        if (hitTree) return;
-
-        if (b.isPlayer) {
-            enemies.forEach(e => {
-                if (!e.markedForDeletion && Math.hypot(b.x - e.x, b.y - e.y) < b.radius + e.radius) {
-                    b.markedForDeletion = true; e.takeDamage(b.damage);
-                }
-            });
-        } else {
-            if (Math.hypot(b.x - player.x, b.y - player.y) < b.radius + player.radius) {
-                b.markedForDeletion = true;
-                player.takeDamage(b.damage);
-            }
-        }
-    });
-}
-
 function gameLoop(time) {
     if (gameState !== 'playing') return;
     const dt = time - lastTime; lastTime = time;
@@ -1738,6 +2277,26 @@ function gameLoop(time) {
     bombs.forEach(b => b.update(dt));
     droppedWeapons.forEach(w => w.update(dt));
     particles.forEach(p => p.update(dt));
+    floatingTexts.forEach(ft => ft.update(dt));
+    radarTowers.forEach(rt => rt.update(dt));
+    turrets.forEach(tu => tu.update(dt));
+    if (activeRadarTimer > 0) activeRadarTimer -= dt;
+
+    if (keys.e) {
+        vaultSafes.forEach(vs => {
+            if (Math.hypot(player.x - vs.x, player.y - vs.y) < player.radius + vs.radius + 25) {
+                vs.hack(dt);
+            }
+        });
+    }
+
+    // Check Contract Target Status
+    if (activeContract && activeContract.target && activeContract.target.markedForDeletion) {
+        killPoints += activeContract.rewardKills;
+        droppedWeapons.push(new DroppedWeapon(activeContract.target.x, activeContract.target.y, WEAPONS.AWP, 0));
+        createFloatingText(player.x, player.y - 50, `✅ CONTRATO COMPLETADO (+${activeContract.rewardKills} KILLS)`, "#00ff00", 24, true);
+        activeContract = null;
+    }
 
     // Crate Drop Logic (Every 10s)
     crateDropTimer -= dt;
@@ -1751,13 +2310,24 @@ function gameLoop(time) {
     // Horde Logic
     if (!isHordeActive) {
         hordeCooldownTimer -= dt;
+        enemies = []; // Ensure 0 enemies roam during round transition break
+        hordeEnemiesRemaining = 0;
         if (hordeCooldownTimer <= 0) {
             currentHorde++;
             startHorde();
         }
+    } else {
+        const activeBots = enemies.filter(e => !e.markedForDeletion);
+        hordeEnemiesRemaining = activeBots.length;
+        if (activeBots.length === 0) {
+            isHordeActive = false;
+            hordeCooldownTimer = 10000;
+            enemies = [];
+            if (!player.markedForDeletion) {
+                createFloatingText(player.x, player.y - 40, "¡HORDA COMPLETADA!", "#00ff00", 26, true);
+            }
+        }
     }
-
-    checkHits();
 
     // Separate dropped items (Loot, Weapons, Armor)
     let allDrops = [...loots, ...armors, ...droppedWeapons];
@@ -1792,6 +2362,8 @@ function gameLoop(time) {
     bombs = bombs.filter(b => !b.markedForDeletion);
     droppedWeapons = droppedWeapons.filter(w => !w.markedForDeletion);
     particles = particles.filter(p => !p.markedForDeletion || p.isBlood);
+    floatingTexts = floatingTexts.filter(ft => !ft.markedForDeletion);
+    explosiveBarrels = explosiveBarrels.filter(eb => !eb.markedForDeletion);
 
     // Draw
     ctx.fillStyle = '#5d9945'; // Off map color
@@ -1808,21 +2380,17 @@ function gameLoop(time) {
     ctx.beginPath();
     const gs = 150;
 
-    // Draw horizontal grid lines
     for (let y = 0; y <= mapSize; y += gs) {
-        ctx.moveTo(0, y);
-        ctx.lineTo(mapSize, y);
+        ctx.moveTo(0, y); ctx.lineTo(mapSize, y);
     }
-    // Draw vertical grid lines
     for (let x = 0; x <= mapSize; x += gs) {
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, mapSize);
+        ctx.moveTo(x, 0); ctx.lineTo(x, mapSize);
     }
 
     ctx.strokeStyle = 'rgba(0,0,0,0.15)';
     ctx.lineWidth = 2;
     ctx.stroke();
-    // Map Limits
+
     ctx.strokeStyle = '#222'; ctx.lineWidth = 15;
     ctx.strokeRect(0, 0, mapSize, mapSize);
 
@@ -1830,6 +2398,12 @@ function gameLoop(time) {
     houses.forEach(h => h.drawFloor(ctx));
     particles.filter(p => p.isBlood).forEach(p => p.draw(ctx));
     crates.forEach(c => c.draw(ctx));
+    explosiveBarrels.forEach(eb => eb.draw(ctx));
+    vaultSafes.forEach(vs => vs.draw(ctx));
+    vendingMachines.forEach(vm => vm.draw(ctx));
+    contractLaptops.forEach(cl => cl.draw(ctx));
+    radarTowers.forEach(rt => rt.draw(ctx));
+    turrets.forEach(tu => tu.draw(ctx));
     droppedWeapons.forEach(w => w.draw(ctx));
     loots.forEach(l => l.draw(ctx));
     armors.forEach(a => a.draw(ctx));
@@ -1839,17 +2413,206 @@ function gameLoop(time) {
     bullets.forEach(b => b.draw(ctx));
     if (!player.markedForDeletion) player.draw(ctx);
 
-    // Environment objects that can hide players (Canopies drawn last)
+    // Environment objects that can hide players
     bushes.forEach(b => b.draw(ctx));
     trees.forEach(t => t.draw(ctx));
-    houses.forEach(h => h.drawWalls(ctx)); // Draw walls on top of entities so they hide under roofs
+    houses.forEach(h => h.drawWalls(ctx));
+    floatingTexts.forEach(ft => ft.draw(ctx));
+
+    // Draw Active Radar Overlay
+    if (activeRadarTimer > 0) {
+        ctx.strokeStyle = '#ff0033';
+        ctx.lineWidth = 3;
+        enemies.forEach(e => {
+            if (!e.markedForDeletion) {
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, e.radius + 14 + Math.sin(performance.now() / 150) * 4, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.fillStyle = '#ff0033';
+                ctx.font = 'bold 12px Roboto';
+                ctx.textAlign = 'center';
+                ctx.fillText("⚠️ BOT", e.x, e.y - e.radius - 20);
+            }
+        });
+    }
 
     ctx.restore();
+
+    // Draw Live Minimap on HUD
+    drawMinimap();
 
     gameLoopId = requestAnimationFrame(gameLoop);
 }
 
-startBtn.addEventListener('click', initGame);
+function drawMinimap() {
+    if (!minimapCtx || !player || player.markedForDeletion) return;
+
+    const mw = minimapCanvas.width;
+    const mh = minimapCanvas.height;
+    const scale = mw / mapSize;
+
+    // Grass Background (Exact Surviv.io style)
+    minimapCtx.fillStyle = '#7ab536';
+    minimapCtx.fillRect(0, 0, mw, mh);
+
+    // Subtle Grid Overlay
+    minimapCtx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
+    minimapCtx.lineWidth = 1;
+    minimapCtx.beginPath();
+    const gs = 250;
+    for (let y = 0; y <= mapSize; y += gs) {
+        minimapCtx.moveTo(0, y * scale); minimapCtx.lineTo(mw, y * scale);
+    }
+    for (let x = 0; x <= mapSize; x += gs) {
+        minimapCtx.moveTo(x * scale, 0); minimapCtx.lineTo(x * scale, mh);
+    }
+    minimapCtx.stroke();
+
+    // Trees (Dark Olive Green Circles like Surviv.io)
+    minimapCtx.fillStyle = '#2d4a1d';
+    trees.forEach(t => {
+        minimapCtx.beginPath();
+        minimapCtx.arc(t.x * scale, t.y * scale, Math.max(2.5, t.radius * 0.08), 0, Math.PI * 2);
+        minimapCtx.fill();
+    });
+
+    // Bushes
+    minimapCtx.fillStyle = 'rgba(90, 160, 45, 0.45)';
+    bushes.forEach(b => {
+        minimapCtx.beginPath();
+        minimapCtx.arc(b.x * scale, b.y * scale, Math.max(2, b.radius * 0.08), 0, Math.PI * 2);
+        minimapCtx.fill();
+    });
+
+    // Houses (Dark Brown/Grey Buildings with Dark Border)
+    houses.forEach(h => {
+        minimapCtx.fillStyle = '#3d342b';
+        minimapCtx.fillRect(h.x * scale, h.y * scale, h.w * scale, h.h * scale);
+        minimapCtx.strokeStyle = '#211a14';
+        minimapCtx.lineWidth = 1;
+        minimapCtx.strokeRect(h.x * scale, h.y * scale, h.w * scale, h.h * scale);
+    });
+
+    // Crates (Tan Squares)
+    minimapCtx.fillStyle = '#c49c5e';
+    crates.forEach(c => {
+        minimapCtx.fillRect(c.x * scale, c.y * scale, Math.max(2, c.size * scale), Math.max(2, c.size * scale));
+    });
+
+    // Explosive Barrels (Red Dots)
+    minimapCtx.fillStyle = '#ef4444';
+    explosiveBarrels.forEach(eb => {
+        minimapCtx.fillRect(eb.x * scale - 1, eb.y * scale - 1, 3, 3);
+    });
+
+    // Vending Machines / Shops (Cyan Dots)
+    minimapCtx.fillStyle = '#00e5ff';
+    vendingMachines.forEach(vm => {
+        minimapCtx.beginPath();
+        minimapCtx.arc((vm.x + vm.w / 2) * scale, (vm.y + vm.h / 2) * scale, 3.5, 0, Math.PI * 2);
+        minimapCtx.fill();
+    });
+
+    // Radar Towers & Vault Safes
+    minimapCtx.fillStyle = '#ffc107';
+    radarTowers.forEach(rt => {
+        minimapCtx.beginPath();
+        minimapCtx.arc(rt.x * scale, rt.y * scale, 3.5, 0, Math.PI * 2);
+        minimapCtx.fill();
+    });
+
+    minimapCtx.fillStyle = '#8b5cf6';
+    vaultSafes.forEach(vs => {
+        minimapCtx.fillRect(vs.x * scale - 2, vs.y * scale - 2, 4, 4);
+    });
+
+    // Blinking Red Bot Radar Pings when activeRadarTimer > 0 (Fast Pulsing opacity like Surviv.io!)
+    if (activeRadarTimer > 0) {
+        const flashAlpha = 0.35 + Math.sin(performance.now() / 70) * 0.65;
+        minimapCtx.fillStyle = `rgba(239, 68, 68, ${flashAlpha})`;
+        enemies.forEach(e => {
+            if (!e.markedForDeletion) {
+                minimapCtx.beginPath();
+                minimapCtx.arc(e.x * scale, e.y * scale, e.isElite ? 6 : 4, 0, Math.PI * 2);
+                minimapCtx.fill();
+            }
+        });
+    }
+
+    // Highlight Bot Élite if contract is active
+    if (activeContract && activeContract.target && !activeContract.target.markedForDeletion) {
+        const elite = activeContract.target;
+        const pulseAlpha = 0.5 + Math.sin(performance.now() / 100) * 0.5;
+        minimapCtx.fillStyle = `rgba(168, 85, 247, ${pulseAlpha})`;
+        minimapCtx.beginPath();
+        minimapCtx.arc(elite.x * scale, elite.y * scale, 6, 0, Math.PI * 2);
+        minimapCtx.fill();
+        minimapCtx.strokeStyle = '#ffffff';
+        minimapCtx.lineWidth = 1.5;
+        minimapCtx.stroke();
+    }
+
+    // Player Icon (Exact Surviv.io style: Yellow circle with white & black outline ring!)
+    const px = player.x * scale;
+    const py = player.y * scale;
+
+    // Direction line
+    minimapCtx.beginPath();
+    minimapCtx.moveTo(px, py);
+    minimapCtx.lineTo((player.x + Math.cos(player.angle) * 160) * scale, (player.y + Math.sin(player.angle) * 160) * scale);
+    minimapCtx.strokeStyle = '#22c55e';
+    minimapCtx.lineWidth = 2;
+    minimapCtx.stroke();
+
+    // Outer black ring
+    minimapCtx.fillStyle = '#000000';
+    minimapCtx.beginPath();
+    minimapCtx.arc(px, py, 6, 0, Math.PI * 2);
+    minimapCtx.fill();
+
+    // Inner white ring
+    minimapCtx.fillStyle = '#ffffff';
+    minimapCtx.beginPath();
+    minimapCtx.arc(px, py, 4.5, 0, Math.PI * 2);
+    minimapCtx.fill();
+
+    // Center yellow dot
+    minimapCtx.fillStyle = '#ffea00';
+    minimapCtx.beginPath();
+    minimapCtx.arc(px, py, 3.2, 0, Math.PI * 2);
+    minimapCtx.fill();
+}
+
+// Surviv.io GUI Menu Event Listeners
+const btnSolo = document.getElementById('start-btn-solo');
+const btnDuo = document.getElementById('start-btn-duo');
+const btnPlus3 = document.getElementById('start-btn-plus3');
+const btnCreateTeam = document.getElementById('create-team-btn');
+const btnHowToPlay = document.getElementById('how-to-play-btn');
+const btnCloseModal = document.getElementById('close-modal-btn');
+const modalHowToPlay = document.getElementById('how-to-play-modal');
+
+if (btnSolo) btnSolo.addEventListener('click', () => initGame('solo'));
+if (btnDuo) btnDuo.addEventListener('click', () => initGame('duo'));
+if (btnPlus3) btnPlus3.addEventListener('click', () => initGame('plus3'));
+
+if (btnCreateTeam) {
+    btnCreateTeam.addEventListener('click', () => {
+        alert("👥 CÓDIGO DE EQUIPO CREADO EXITOSAMENTE!\nCódigo de Sala: #BOLITAS-TEAM-88\n¡Comparte este código con tus amigos para jugar juntos!");
+    });
+}
+
+if (btnHowToPlay) {
+    btnHowToPlay.addEventListener('click', () => {
+        modalHowToPlay.classList.remove('hidden');
+    });
+}
+
+if (btnCloseModal) {
+    btnCloseModal.addEventListener('click', () => {
+        modalHowToPlay.classList.add('hidden');
+    });
+}
 restartBtn.addEventListener('click', () => {
     if (gameState === 'menu') return; // Evitar clicks dobles
     gameOverScreen.classList.add('hidden');
@@ -1921,7 +2684,8 @@ function menuLoop(time) {
     });
 
     // Update menu bullets
-    menuBullets.forEach(b => b.update(dt));
+    particles.forEach(p => p.update(dt));
+    floatingTexts.forEach(ft => ft.update(dt));
     menuBullets = menuBullets.filter(b => !b.markedForDeletion && b.x > 0 && b.x < 2000 && b.y > 0 && b.y < 2000);
 
     // Draw Background

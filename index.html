@@ -13,6 +13,9 @@
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
         <div id="ui-layer">
+            <div id="minimap-container">
+                <canvas id="minimapCanvas" width="180" height="180"></canvas>
+            </div>
             <div id="health-bar">
                 <div id="health-fill"></div>
             </div>
@@ -89,12 +92,37 @@
             </div>
 
             <div id="start-screen" class="screen">
-                <div class="logo-box">
-                    <h1>BOLITAS</h1>
+                <div class="surviv-logo-box">
+                    <h1 class="surviv-title">bolitas<span class="title-dot">.io</span></h1>
+                    <div class="surviv-subtitle">2d Battle Royale</div>
                 </div>
-                <div class="menu-panel">
-                    <input type="text" id="player-name" placeholder="Enter your name here" class="name-input">
-                    <button id="start-btn" class="btn-solo">Deploy</button>
+                <div class="surviv-menu-card">
+                    <input type="text" id="player-name" placeholder="Enter name" class="surviv-name-input">
+                    
+                    <button id="start-btn-solo" class="surviv-btn btn-green btn-main">Play Solo</button>
+                    
+                    <div class="surviv-btn-group">
+                        <button id="start-btn-duo" class="surviv-btn btn-green btn-sub">Play Duo</button>
+                        <button id="start-btn-plus3" class="surviv-btn btn-green btn-sub">Play +3</button>
+                    </div>
+
+                    <button id="how-to-play-btn" class="surviv-btn btn-grey">How to Play</button>
+                </div>
+            </div>
+
+            <div id="how-to-play-modal" class="screen hidden">
+                <div class="modal-card">
+                    <h2>🎮 ¿CÓMO JUGAR?</h2>
+                    <ul>
+                        <li><strong>WASD</strong>: Mover a tu bolita</li>
+                        <li><strong>Mouse / Clic</strong>: Apuntar y disparar</li>
+                        <li><strong>E</strong>: Interactuar (Radares, Laptops, Expendedoras, Torretas)</li>
+                        <li><strong>F</strong>: Recoger armas del suelo</li>
+                        <li><strong>R</strong>: Recargar manualmente</li>
+                        <li><strong>1 - 5</strong>: Seleccionar arma del inventario</li>
+                        <li><strong>Mantener [E]</strong>: Hackear Búnker / Caja Fuerte</li>
+                    </ul>
+                    <button id="close-modal-btn" class="surviv-btn btn-green" style="margin-top: 15px;">¡ENTENDIDO!</button>
                 </div>
             </div>
 
