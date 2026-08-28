@@ -42,6 +42,8 @@ let kills = 0;
 let killPoints = 0;
 let showInventory = false;
 let draggedSlotIndex = null;
+let onlineTeammates = [];
+let lastNetworkSyncTime = 0;
 
 // Input
 const keys = { w: false, a: false, s: false, d: false, f: false, e: false, r: false, tab: false };
@@ -488,7 +490,7 @@ class Bolita {
             }
         } else { // AI shooting logic
             // Boosted aggressiveness for Elite Contract Boss vs regular bots
-            const aiFireRateDelay = this.isElite 
+            const aiFireRateDelay = this.isElite
                 ? weaponDef.fireRate * 1.5 + (Math.random() * 80)
                 : weaponDef.fireRate * 3.2 + (Math.random() * 200);
 
@@ -537,6 +539,16 @@ class Bolita {
             bullets.push(new Bullet(sx, sy, this.angle + spread, this.isPlayer, weaponDef.speed, weaponDef.damage));
         }
 
+        if (this.isPlayer && !isHost && hostConn && hostConn.open) {
+            hostConn.send({
+                type: 'shootEvent',
+                x: sx,
+                y: sy,
+                angle: this.angle,
+                weaponName: weaponDef.name
+            });
+        }
+
         // Recoil
         if (weaponDef.icon === 'sniper') {
             this.x -= Math.cos(this.angle) * 5;
@@ -564,6 +576,16 @@ class Bolita {
                 const spread = (Math.random() - 0.5) * weaponDef.spread;
                 bullets.push(new Bullet(sx, sy, this.angle + spread, this.isPlayer, weaponDef.speed * (0.8 + Math.random() * 0.4), weaponDef.damage));
             }
+        }
+
+        if (this.isPlayer && !isHost && hostConn && hostConn.open) {
+            hostConn.send({
+                type: 'shootEvent',
+                x: sx,
+                y: sy,
+                angle: this.angle,
+                weaponName: weaponDef.name
+            });
         }
 
         // Major Recoil only for bots/very specific instances, otherwise no shotgun recoil
@@ -802,9 +824,9 @@ class Bolita {
             ctx.restore();
         }
 
-        // Draw Username label ONLY for player or Elite boss (no labels on normal bots)
-        if (this.name && (this.isPlayer || this.isElite)) {
-            ctx.fillStyle = this.isPlayer ? '#ffffff' : '#a855f7';
+        // Draw Username label for player, Elite boss, or Online Teammates
+        if (this.name && (this.isPlayer || this.isElite || this.isOnlineTeammate)) {
+            ctx.fillStyle = this.isPlayer ? '#ffffff' : (this.isOnlineTeammate ? '#00e5ff' : '#a855f7');
             ctx.font = 'bold 16px Roboto, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
@@ -1597,7 +1619,7 @@ class RadarTower {
             createFloatingText(this.x, this.y - 20, "📡 RADAR ACTIVADO (15s)", "#00ffff", 20, true);
             createParticles(this.x, this.y, "#00ffff", 25);
         } else {
-            createFloatingText(this.x, this.y - 20, `⏳ EN RECARGA (${(this.cooldown/1000).toFixed(0)}s)`, "#ff4444", 16);
+            createFloatingText(this.x, this.y - 20, `⏳ EN RECARGA (${(this.cooldown / 1000).toFixed(0)}s)`, "#ff4444", 16);
         }
     }
     draw(ctx) {
@@ -1719,13 +1741,13 @@ class VaultSafe {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.fillStyle = this.isHacked ? '#2d3436' : '#636e72';
-        ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+        ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
         ctx.strokeStyle = this.isHacked ? '#00b894' : '#d63031';
-        ctx.lineWidth = 3; ctx.strokeRect(-this.size/2, -this.size/2, this.size, this.size);
-        
+        ctx.lineWidth = 3; ctx.strokeRect(-this.size / 2, -this.size / 2, this.size, this.size);
+
         if (!this.isHacked && this.hackProgress > 0) {
             ctx.fillStyle = '#00b894';
-            ctx.fillRect(-this.size/2, this.size/2 + 4, (this.size * this.hackProgress) / 100, 5);
+            ctx.fillRect(-this.size / 2, this.size / 2 + 4, (this.size * this.hackProgress) / 100, 5);
         }
         ctx.restore();
     }
@@ -1976,7 +1998,7 @@ function updateUI() {
 
     radarTowers.forEach(t => {
         if (Math.hypot(player.x - t.x, player.y - t.y) < player.radius + t.radius + 25) {
-            promptMsg = t.cooldown <= 0 ? "Press [E] to Activate Radar Scan" : `Radar Cooling Down (${(t.cooldown/1000).toFixed(0)}s)`;
+            promptMsg = t.cooldown <= 0 ? "Press [E] to Activate Radar Scan" : `Radar Cooling Down (${(t.cooldown / 1000).toFixed(0)}s)`;
         }
     });
 
@@ -2084,8 +2106,8 @@ function getValidSpawnPos(minDist = 140) {
         // Check distance to all existing objects (prevent overlaps between crates, barrels, machines, towers, etc.)
         if (valid) {
             const allEntities = [
-                ...radarTowers, ...contractLaptops, ...vendingMachines, 
-                ...vaultSafes, ...turrets, ...explosiveBarrels, 
+                ...radarTowers, ...contractLaptops, ...vendingMachines,
+                ...vaultSafes, ...turrets, ...explosiveBarrels,
                 ...crates, ...trees
             ];
             for (let e of allEntities) {
@@ -2103,13 +2125,57 @@ function getValidSpawnPos(minDist = 140) {
     return { x: px, y: py, valid };
 }
 
-function initGame(mode = 'solo') {
+function getMapData() {
+    return {
+        houses: houses.map(h => ({ x: h.x, y: h.y, w: h.w, h: h.h })),
+        crates: crates.map(c => ({ x: c.x, y: c.y })),
+        explosiveBarrels: explosiveBarrels.map(b => ({ x: b.x, y: b.y })),
+        radarTowers: radarTowers.map(r => ({ x: r.x, y: r.y })),
+        contractLaptops: contractLaptops.map(l => ({ x: l.x, y: l.y })),
+        vendingMachines: vendingMachines.map(v => ({ x: v.x, y: v.y })),
+        vaultSafes: vaultSafes.map(s => ({ x: s.x, y: s.y })),
+        turrets: turrets.map(t => ({ x: t.x, y: t.y })),
+        trees: trees.map(t => ({ x: t.x, y: t.y, radius: t.radius, points: t.points })),
+        bushes: bushes.map(b => ({ x: b.x, y: b.y, radius: b.radius, points: b.points }))
+    };
+}
+
+function loadMapData(mapData) {
+    houses = []; crates = []; explosiveBarrels = []; radarTowers = [];
+    contractLaptops = []; vendingMachines = []; vaultSafes = []; turrets = []; trees = []; bushes = [];
+
+    if (!mapData) return;
+
+    if (mapData.houses) mapData.houses.forEach(h => houses.push(new House(h.x, h.y, h.w, h.h)));
+    if (mapData.crates) mapData.crates.forEach(c => crates.push(new Crate(c.x, c.y)));
+    if (mapData.explosiveBarrels) mapData.explosiveBarrels.forEach(b => explosiveBarrels.push(new ExplosiveBarrel(b.x, b.y)));
+    if (mapData.radarTowers) mapData.radarTowers.forEach(r => radarTowers.push(new RadarTower(r.x, r.y)));
+    if (mapData.contractLaptops) mapData.contractLaptops.forEach(l => contractLaptops.push(new ContractLaptop(l.x, l.y)));
+    if (mapData.vendingMachines) mapData.vendingMachines.forEach(v => vendingMachines.push(new VendingMachine(v.x, v.y)));
+    if (mapData.vaultSafes) mapData.vaultSafes.forEach(s => vaultSafes.push(new VaultSafe(s.x, s.y)));
+    if (mapData.turrets) mapData.turrets.forEach(t => turrets.push(new Turret(t.x, t.y)));
+    if (mapData.trees) mapData.trees.forEach(t => {
+        const tree = new Tree(t.x, t.y);
+        if (t.radius) tree.radius = t.radius;
+        if (t.points) tree.points = t.points;
+        trees.push(tree);
+    });
+    if (mapData.bushes) mapData.bushes.forEach(b => {
+        const bush = new Bush(b.x, b.y);
+        if (b.radius) bush.radius = b.radius;
+        if (b.points) bush.points = b.points;
+        bushes.push(bush);
+    });
+}
+
+function initGame(mode = 'solo', mapData = null) {
     const nameInput = document.getElementById('player-name').value.trim();
     const playerName = nameInput || "Player 1";
 
     player = new Bolita(mapSize / 2, mapSize / 2, '#f5d0b5', true, playerName);
     bullets = []; enemies = []; crates = []; loots = []; armors = []; bombs = []; droppedWeapons = []; particles = []; floatingTexts = []; houses = []; trees = []; bushes = [];
     radarTowers = []; contractLaptops = []; vendingMachines = []; vaultSafes = []; explosiveBarrels = []; turrets = [];
+    onlineTeammates = [];
     activeRadarTimer = 0; activeContract = null;
     kills = 0; killPoints = 0;
     currentHorde = 1;
@@ -2121,90 +2187,96 @@ function initGame(mode = 'solo') {
 
     document.body.classList.remove('in-menu');
 
-    // Procedural Houses Spawn with strict 550px minimum distance ratio
-    const numHouses = 5 + Math.floor(Math.random() * 2);
-    for (let i = 0; i < numHouses; i++) {
-        let hw = 450 + Math.random() * 200;
-        let hh = 400 + Math.random() * 200;
-        let valid = false;
-        let attempts = 0;
-        let hx, hy;
+    if (mapData) {
+        loadMapData(mapData);
+    } else {
+        // Procedural Houses Spawn with strict 550px minimum distance ratio
+        const numHouses = 5 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < numHouses; i++) {
+            let hw = 450 + Math.random() * 200;
+            let hh = 400 + Math.random() * 200;
+            let valid = false;
+            let attempts = 0;
+            let hx, hy;
 
-        while (!valid && attempts < 120) {
-            hx = 400 + Math.random() * (mapSize - 1200);
-            hy = 400 + Math.random() * (mapSize - 1200);
-            valid = true;
+            while (!valid && attempts < 120) {
+                hx = 400 + Math.random() * (mapSize - 1200);
+                hy = 400 + Math.random() * (mapSize - 1200);
+                valid = true;
 
-            for (let existingH of houses) {
-                // Ensure houses do not spawn close to each other (minimum 550px clearance)
-                if (hx + hw + 550 > existingH.x && hx < existingH.x + existingH.w + 550 &&
-                    hy + hh + 550 > existingH.y && hy < existingH.y + existingH.h + 550) {
-                    valid = false; break;
+                for (let existingH of houses) {
+                    // Ensure houses do not spawn close to each other (minimum 550px clearance)
+                    if (hx + hw + 550 > existingH.x && hx < existingH.x + existingH.w + 550 &&
+                        hy + hh + 550 > existingH.y && hy < existingH.y + existingH.h + 550) {
+                        valid = false; break;
+                    }
                 }
+                attempts++;
             }
-            attempts++;
+
+            if (valid) {
+                houses.push(new House(hx, hy, hw, hh));
+            }
         }
 
-        if (valid) {
-            houses.push(new House(hx, hy, hw, hh));
+        // Procedural Interactive Objects Spawn (Guaranteed no overlaps)
+        for (let i = 0; i < 3; i++) {
+            let pos = getValidSpawnPos(200);
+            if (pos.valid) radarTowers.push(new RadarTower(pos.x, pos.y));
+        }
+
+        for (let i = 0; i < 3; i++) {
+            let pos = getValidSpawnPos(200);
+            if (pos.valid) contractLaptops.push(new ContractLaptop(pos.x, pos.y));
+        }
+
+        for (let i = 0; i < 3; i++) {
+            let pos = getValidSpawnPos(200);
+            if (pos.valid) vendingMachines.push(new VendingMachine(pos.x, pos.y));
+        }
+
+        for (let i = 0; i < 3; i++) {
+            let pos = getValidSpawnPos(200);
+            if (pos.valid) vaultSafes.push(new VaultSafe(pos.x, pos.y));
+        }
+
+        for (let i = 0; i < 3; i++) {
+            let pos = getValidSpawnPos(200);
+            if (pos.valid) turrets.push(new Turret(pos.x, pos.y));
+        }
+
+        // Spawn crates cleanly separated first (minDist 150px)
+        for (let i = 0; i < 60; i++) {
+            let pos = getValidSpawnPos(150);
+            if (pos.valid) crates.push(new Crate(pos.x, pos.y));
+        }
+
+        // Spawn explosive barrels after crates with strict 180px clearance (guarantees no barrels on crates)
+        for (let i = 0; i < 25; i++) {
+            let pos = getValidSpawnPos(180);
+            if (pos.valid) explosiveBarrels.push(new ExplosiveBarrel(pos.x, pos.y));
+        }
+
+        // Spawn fewer, well-spaced trees (35 to 45 trees max)
+        const numTrees = 35 + Math.floor(Math.random() * 10);
+        for (let i = 0; i < numTrees; i++) {
+            let pos = getValidSpawnPos(160);
+            if (pos.valid) trees.push(new Tree(pos.x, pos.y));
+        }
+
+        // Spawn bushes
+        for (let i = 0; i < 45; i++) {
+            let pos = getValidSpawnPos(110);
+            if (pos.valid) bushes.push(new Bush(pos.x, pos.y));
         }
     }
 
     updateUI();
 
-    // Procedural Interactive Objects Spawn (Guaranteed no overlaps)
-    for (let i = 0; i < 3; i++) {
-        let pos = getValidSpawnPos(200);
-        if (pos.valid) radarTowers.push(new RadarTower(pos.x, pos.y));
+    // Only host or single player runs the horde spawner
+    if (isHost || mode === 'solo') {
+        startHorde();
     }
-
-    for (let i = 0; i < 3; i++) {
-        let pos = getValidSpawnPos(200);
-        if (pos.valid) contractLaptops.push(new ContractLaptop(pos.x, pos.y));
-    }
-
-    for (let i = 0; i < 3; i++) {
-        let pos = getValidSpawnPos(200);
-        if (pos.valid) vendingMachines.push(new VendingMachine(pos.x, pos.y));
-    }
-
-    for (let i = 0; i < 3; i++) {
-        let pos = getValidSpawnPos(200);
-        if (pos.valid) vaultSafes.push(new VaultSafe(pos.x, pos.y));
-    }
-
-    for (let i = 0; i < 3; i++) {
-        let pos = getValidSpawnPos(200);
-        if (pos.valid) turrets.push(new Turret(pos.x, pos.y));
-    }
-
-    // Spawn crates cleanly separated first (minDist 150px)
-    for (let i = 0; i < 60; i++) {
-        let pos = getValidSpawnPos(150);
-        if (pos.valid) crates.push(new Crate(pos.x, pos.y));
-    }
-
-    // Spawn explosive barrels after crates with strict 180px clearance (guarantees no barrels on crates)
-    for (let i = 0; i < 25; i++) {
-        let pos = getValidSpawnPos(180);
-        if (pos.valid) explosiveBarrels.push(new ExplosiveBarrel(pos.x, pos.y));
-    }
-
-    // Spawn fewer, well-spaced trees (35 to 45 trees max)
-    const numTrees = 35 + Math.floor(Math.random() * 10);
-    for (let i = 0; i < numTrees; i++) {
-        let pos = getValidSpawnPos(160);
-        if (pos.valid) trees.push(new Tree(pos.x, pos.y));
-    }
-
-    // Spawn bushes
-    for (let i = 0; i < 45; i++) {
-        let pos = getValidSpawnPos(110);
-        if (pos.valid) bushes.push(new Bush(pos.x, pos.y));
-    }
-
-    // Spawn initial enemies
-    startHorde();
 
     gameState = 'playing';
     startScreen.classList.add('hidden');
@@ -2413,6 +2485,11 @@ function gameLoop(time) {
     bullets.forEach(b => b.draw(ctx));
     if (!player.markedForDeletion) player.draw(ctx);
 
+    // Draw Online Teammates (Friends)
+    onlineTeammates.forEach(tm => {
+        if (!tm.markedForDeletion) tm.draw(ctx);
+    });
+
     // Environment objects that can hide players
     bushes.forEach(b => b.draw(ctx));
     trees.forEach(t => t.draw(ctx));
@@ -2437,6 +2514,84 @@ function gameLoop(time) {
     }
 
     ctx.restore();
+
+    // Multiplayer Real-time Network Synchronization Loop (30 FPS)
+    const nowTime = performance.now();
+    if (nowTime - lastNetworkSyncTime > 33) {
+        lastNetworkSyncTime = nowTime;
+
+        if (isHost && peerConnections.length > 0) {
+            const syncPacket = {
+                type: 'worldSync',
+                host: {
+                    x: player.x,
+                    y: player.y,
+                    angle: player.angle,
+                    health: player.health,
+                    maxHealth: player.maxHealth,
+                    name: player.name,
+                    activeSlotIndex: player.activeSlotIndex,
+                    weaponName: player.inventory[player.activeSlotIndex]?.type?.name || 'Pistol',
+                    vestLevel: player.vestLevel,
+                    helmetLevel: player.helmetLevel
+                },
+                teammates: onlineTeammates.map(t => ({
+                    peerId: t.peerId,
+                    name: t.name,
+                    x: t.x,
+                    y: t.y,
+                    angle: t.angle,
+                    health: t.health,
+                    maxHealth: t.maxHealth,
+                    activeSlotIndex: t.activeSlotIndex,
+                    weaponName: t.inventory[t.activeSlotIndex]?.type?.name || 'Assault Rifle',
+                    vestLevel: t.vestLevel,
+                    helmetLevel: t.helmetLevel
+                })),
+                enemies: enemies.filter(e => !e.markedForDeletion).map(e => ({
+                    x: e.x,
+                    y: e.y,
+                    angle: e.angle,
+                    health: e.health,
+                    maxHealth: e.maxHealth,
+                    color: e.color,
+                    isElite: e.isElite,
+                    name: e.name,
+                    vestLevel: e.vestLevel,
+                    helmetLevel: e.helmetLevel
+                })),
+                bullets: bullets.filter(b => !b.markedForDeletion).map(b => ({
+                    x: b.x,
+                    y: b.y,
+                    vx: b.vx,
+                    vy: b.vy,
+                    color: b.color,
+                    isPlayer: b.isPlayer
+                })),
+                horde: currentHorde,
+                remaining: hordeEnemiesRemaining,
+                kills: kills
+            };
+
+            peerConnections.forEach(conn => {
+                if (conn.open) conn.send(syncPacket);
+            });
+        } else if (!isHost && hostConn && hostConn.open) {
+            hostConn.send({
+                type: 'clientInput',
+                x: player.x,
+                y: player.y,
+                angle: player.angle,
+                health: player.health,
+                name: player.name,
+                isShooting: mouse.down,
+                activeSlotIndex: player.activeSlotIndex,
+                weaponName: player.inventory[player.activeSlotIndex]?.type?.name || 'Assault Rifle',
+                vestLevel: player.vestLevel,
+                helmetLevel: player.helmetLevel
+            });
+        }
+    }
 
     // Draw Live Minimap on HUD
     drawMinimap();
@@ -2552,6 +2707,29 @@ function drawMinimap() {
         minimapCtx.stroke();
     }
 
+    // Render Online Teammates (Friends) on Minimap (Cyan with black outline)
+    onlineTeammates.forEach(tm => {
+        if (!tm.markedForDeletion) {
+            const tx = tm.x * scale;
+            const ty = tm.y * scale;
+
+            minimapCtx.fillStyle = '#000000';
+            minimapCtx.beginPath();
+            minimapCtx.arc(tx, ty, 5.5, 0, Math.PI * 2);
+            minimapCtx.fill();
+
+            minimapCtx.fillStyle = '#ffffff';
+            minimapCtx.beginPath();
+            minimapCtx.arc(tx, ty, 4, 0, Math.PI * 2);
+            minimapCtx.fill();
+
+            minimapCtx.fillStyle = '#00e5ff';
+            minimapCtx.beginPath();
+            minimapCtx.arc(tx, ty, 2.8, 0, Math.PI * 2);
+            minimapCtx.fill();
+        }
+    });
+
     // Player Icon (Exact Surviv.io style: Yellow circle with white & black outline ring!)
     const px = player.x * scale;
     const py = player.y * scale;
@@ -2583,9 +2761,10 @@ function drawMinimap() {
     minimapCtx.fill();
 }
 
-// PeerJS Realtime Online Multiplayer Co-op Lobby System
+// PeerJS Realtime Online Multiplayer Co-op Lobby & Synchronization System
 let peer = null;
 let peerConnections = [];
+let hostConn = null;
 let roomCode = null;
 let isHost = false;
 let lobbyPlayers = [];
@@ -2653,26 +2832,50 @@ function openTeamLobbyHost(initialMode = 'duo') {
         peer.on('connection', (conn) => {
             conn.on('open', () => {
                 peerConnections.push(conn);
-
                 const guestName = conn.metadata && conn.metadata.name ? conn.metadata.name : `Jugador #${lobbyPlayers.length + 1}`;
-                lobbyPlayers.push({ name: guestName, isHost: false, conn: conn });
+                lobbyPlayers.push({ name: guestName, isHost: false, conn: conn, peerId: conn.peer });
                 renderLobbyPlayers();
-
-                // Broadcast updated player list to all connected clients in the lobby
                 broadcastLobbyState();
             });
 
             conn.on('data', (data) => {
-                if (data.type === 'move') {
-                    const ally = enemies.find(e => e.conn === conn);
-                    if (ally) {
-                        ally.x = data.x; ally.y = data.y; ally.angle = data.angle;
+                if (data.type === 'clientInput') {
+                    // Update connected teammate position and state on Host
+                    let teammate = onlineTeammates.find(t => t.peerId === conn.peer);
+                    if (!teammate) {
+                        teammate = new Bolita(data.x, data.y, '#00e5ff', false, data.name || "Amigo Online");
+                        teammate.isOnlineTeammate = true;
+                        teammate.peerId = conn.peer;
+                        teammate.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
+                        onlineTeammates.push(teammate);
+                    }
+                    teammate.x = data.x;
+                    teammate.y = data.y;
+                    teammate.angle = data.angle;
+                    teammate.health = data.health;
+                    teammate.vestLevel = data.vestLevel || 0;
+                    teammate.helmetLevel = data.helmetLevel || 0;
+                } else if (data.type === 'shootEvent') {
+                    // Spawn bullet fired by client on Host's world
+                    const weaponDef = Object.values(WEAPONS).find(w => w.name === data.weaponName) || WEAPONS.AssaultRifle;
+                    const gunLen = weaponDef.len;
+                    let sx = data.x + Math.cos(data.angle) * gunLen;
+                    let sy = data.y + Math.sin(data.angle) * gunLen;
+                    if (weaponDef.pellets) {
+                        for (let i = 0; i < weaponDef.pellets; i++) {
+                            const spread = (Math.random() - 0.5) * weaponDef.spread;
+                            bullets.push(new Bullet(sx, sy, data.angle + spread, true, weaponDef.speed * (0.8 + Math.random() * 0.4), weaponDef.damage));
+                        }
+                    } else {
+                        const spread = (Math.random() - 0.5) * weaponDef.spread;
+                        bullets.push(new Bullet(sx, sy, data.angle + spread, true, weaponDef.speed, weaponDef.damage));
                     }
                 }
             });
 
             conn.on('close', () => {
                 lobbyPlayers = lobbyPlayers.filter(p => p.conn !== conn);
+                onlineTeammates = onlineTeammates.filter(t => t.peerId !== conn.peer);
                 peerConnections = peerConnections.filter(c => c !== conn);
                 renderLobbyPlayers();
                 broadcastLobbyState();
@@ -2707,9 +2910,9 @@ function joinTeamLobby(code) {
 
     peer.on('open', () => {
         const playerName = document.getElementById('player-name').value.trim() || "Jugador Online";
-        const conn = peer.connect(`bolita-room-${cleanCode}`, { metadata: { name: playerName } });
+        hostConn = peer.connect(`bolita-room-${cleanCode}`, { metadata: { name: playerName } });
 
-        conn.on('open', () => {
+        hostConn.on('open', () => {
             document.getElementById('join-room-modal').classList.add('hidden');
             document.getElementById('start-screen').classList.add('hidden');
             document.getElementById('team-lobby-modal').classList.remove('hidden');
@@ -2722,24 +2925,100 @@ function joinTeamLobby(code) {
                 startBtn.style.opacity = '0.6';
             }
 
-            conn.on('data', (data) => {
+            hostConn.on('data', (data) => {
                 if (data.type === 'lobbyUpdate') {
                     lobbyPlayers = data.players;
                     renderLobbyPlayers();
                 } else if (data.type === 'startGame') {
                     document.getElementById('team-lobby-modal').classList.add('hidden');
-                    initGame(data.mode || 'duo');
-                    createFloatingText(player.x, player.y - 40, `🚀 ¡PARTIDA INICIADA EN SALA #${cleanCode}!`, '#00ff00', 24, true);
+                    initGame(data.mode || 'duo', data.mapData);
+                    createFloatingText(player.x, player.y - 40, `🚀 ¡PARTIDA EN SALA #${cleanCode}!`, '#00ff00', 24, true);
 
-                    setInterval(() => {
-                        if (conn && player && !player.markedForDeletion) {
-                            conn.send({ type: 'move', x: player.x, y: player.y, angle: player.angle });
+                    // Show Room Code HUD
+                    const roomHud = document.getElementById('room-code-hud');
+                    const roomDisplay = document.getElementById('room-code-display');
+                    if (roomHud && roomDisplay) {
+                        roomDisplay.textContent = `#${cleanCode}`;
+                        roomHud.classList.remove('hidden');
+                    }
+                } else if (data.type === 'worldSync') {
+                    // Update Host position
+                    let hostTeammate = onlineTeammates.find(t => t.peerId === 'host');
+                    if (!hostTeammate && data.host) {
+                        hostTeammate = new Bolita(data.host.x, data.host.y, '#00e5ff', false, data.host.name || "Líder 👑");
+                        hostTeammate.isOnlineTeammate = true;
+                        hostTeammate.peerId = 'host';
+                        hostTeammate.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
+                        onlineTeammates.push(hostTeammate);
+                    }
+                    if (hostTeammate && data.host) {
+                        hostTeammate.x = data.host.x;
+                        hostTeammate.y = data.host.y;
+                        hostTeammate.angle = data.host.angle;
+                        hostTeammate.health = data.host.health;
+                        hostTeammate.vestLevel = data.host.vestLevel || 0;
+                        hostTeammate.helmetLevel = data.host.helmetLevel || 0;
+                    }
+
+                    // Update other teammates
+                    if (data.teammates) {
+                        data.teammates.forEach(tm => {
+                            if (tm.peerId !== peer.id) {
+                                let localTm = onlineTeammates.find(t => t.peerId === tm.peerId);
+                                if (!localTm) {
+                                    localTm = new Bolita(tm.x, tm.y, '#00e5ff', false, tm.name || "Amigo");
+                                    localTm.isOnlineTeammate = true;
+                                    localTm.peerId = tm.peerId;
+                                    localTm.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
+                                    onlineTeammates.push(localTm);
+                                }
+                                localTm.x = tm.x;
+                                localTm.y = tm.y;
+                                localTm.angle = tm.angle;
+                                localTm.health = tm.health;
+                                localTm.vestLevel = tm.vestLevel || 0;
+                                localTm.helmetLevel = tm.helmetLevel || 0;
+                            }
+                        });
+                    }
+
+                    // Sync Bots (Enemies)
+                    if (data.enemies) {
+                        while (enemies.length < data.enemies.length) {
+                            enemies.push(new Bolita(0, 0, '#d44e4e', false, "Bot"));
                         }
-                    }, 40);
+                        while (enemies.length > data.enemies.length) {
+                            enemies.pop();
+                        }
+                        data.enemies.forEach((ed, i) => {
+                            if (enemies[i]) {
+                                enemies[i].x = ed.x;
+                                enemies[i].y = ed.y;
+                                enemies[i].angle = ed.angle;
+                                enemies[i].health = ed.health;
+                                enemies[i].maxHealth = ed.maxHealth;
+                                enemies[i].color = ed.color;
+                                enemies[i].isElite = ed.isElite;
+                                enemies[i].name = ed.name;
+                                enemies[i].vestLevel = ed.vestLevel || 0;
+                                enemies[i].helmetLevel = ed.helmetLevel || 0;
+                            }
+                        });
+                    }
+
+                    // Sync Bullets
+                    if (data.bullets) {
+                        bullets = data.bullets.map(b => new Bullet(b.x, b.y, Math.atan2(b.vy, b.vx), b.isPlayer, Math.hypot(b.vx, b.vy), 20));
+                    }
+
+                    // Sync UI Meta
+                    if (data.horde !== undefined) currentHorde = data.horde;
+                    if (data.remaining !== undefined) hordeEnemiesRemaining = data.remaining;
+                    if (data.kills !== undefined) kills = data.kills;
                 }
             });
 
-            conn.on('error', () => {
+            hostConn.on('error', () => {
                 alert(`❌ No se pudo conectar a la sala #${cleanCode}.`);
             });
         });
@@ -2748,12 +3027,6 @@ function joinTeamLobby(code) {
 
 function startGameFromLobby() {
     if (!isHost) return;
-
-    // Broadcast start game event to all connected friends in the lobby!
-    const payload = { type: 'startGame', mode: selectedLobbyMode };
-    peerConnections.forEach(conn => {
-        if (conn.open) conn.send(payload);
-    });
 
     document.getElementById('team-lobby-modal').classList.add('hidden');
 
@@ -2767,14 +3040,29 @@ function startGameFromLobby() {
 
     initGame(selectedLobbyMode);
 
-    // Spawn real online player teammates for each connected friend!
+    // Get the authoritative procedural map data to replicate to all friends!
+    const sharedMapData = getMapData();
+
+    // Create online teammates for all connected friends on Host
+    onlineTeammates = [];
     lobbyPlayers.filter(p => !p.isHost).forEach((friend, idx) => {
         const friendPlayer = new Bolita(player.x + (idx + 1) * 60, player.y + (idx + 1) * 30, '#00e5ff', false, friend.name);
-        friendPlayer.isAlly = true;
-        friendPlayer.isOnlinePlayer = true;
-        friendPlayer.conn = friend.conn;
+        friendPlayer.isOnlineTeammate = true;
+        friendPlayer.peerId = friend.peerId;
         friendPlayer.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
-        enemies.push(friendPlayer);
+        onlineTeammates.push(friendPlayer);
+    });
+
+    // Broadcast start game event + exact map layout to all connected friends!
+    const payload = {
+        type: 'startGame',
+        mode: selectedLobbyMode,
+        mapData: sharedMapData,
+        players: lobbyPlayers.map(p => ({ name: p.name, isHost: p.isHost, peerId: p.peerId }))
+    };
+
+    peerConnections.forEach(conn => {
+        if (conn.open) conn.send(payload);
     });
 }
 
