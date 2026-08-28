@@ -539,9 +539,10 @@ class Bolita {
             bullets.push(new Bullet(sx, sy, this.angle + spread, this.isPlayer, weaponDef.speed, weaponDef.damage));
         }
 
-        if (this.isPlayer && !isHost && hostConn && hostConn.open) {
-            hostConn.send({
+        if (this.isPlayer && !isHost && currentRoomRef) {
+            currentRoomRef.child('inputs/' + myPlayerId + '_shoot_' + Date.now()).set({
                 type: 'shootEvent',
+                playerId: myPlayerId,
                 x: sx,
                 y: sy,
                 angle: this.angle,
@@ -578,9 +579,10 @@ class Bolita {
             }
         }
 
-        if (this.isPlayer && !isHost && hostConn && hostConn.open) {
-            hostConn.send({
+        if (this.isPlayer && !isHost && currentRoomRef) {
+            currentRoomRef.child('inputs/' + myPlayerId + '_shoot_' + Date.now()).set({
                 type: 'shootEvent',
+                playerId: myPlayerId,
                 x: sx,
                 y: sy,
                 angle: this.angle,
@@ -2515,14 +2517,13 @@ function gameLoop(time) {
 
     ctx.restore();
 
-    // Multiplayer Real-time Network Synchronization Loop (30 FPS)
+    // Realtime Cloud Network Synchronization Loop (30 FPS)
     const nowTime = performance.now();
     if (nowTime - lastNetworkSyncTime > 33) {
         lastNetworkSyncTime = nowTime;
 
-        if (isHost && peerConnections.length > 0) {
-            const syncPacket = {
-                type: 'worldSync',
+        if (isHost && currentRoomRef) {
+            currentRoomRef.child('world').set({
                 host: {
                     x: player.x,
                     y: player.y,
@@ -2556,9 +2557,7 @@ function gameLoop(time) {
                     maxHealth: e.maxHealth,
                     color: e.color,
                     isElite: e.isElite,
-                    name: e.name,
-                    vestLevel: e.vestLevel,
-                    helmetLevel: e.helmetLevel
+                    name: e.name
                 })),
                 bullets: bullets.filter(b => !b.markedForDeletion).map(b => ({
                     x: b.x,
@@ -2571,14 +2570,11 @@ function gameLoop(time) {
                 horde: currentHorde,
                 remaining: hordeEnemiesRemaining,
                 kills: kills
-            };
-
-            peerConnections.forEach(conn => {
-                if (conn.open) conn.send(syncPacket);
             });
-        } else if (!isHost && hostConn && hostConn.open) {
-            hostConn.send({
+        } else if (!isHost && currentRoomRef) {
+            currentRoomRef.child('inputs/' + myPlayerId).set({
                 type: 'clientInput',
+                playerId: myPlayerId,
                 x: player.x,
                 y: player.y,
                 angle: player.angle,
@@ -2761,26 +2757,32 @@ function drawMinimap() {
     minimapCtx.fill();
 }
 
-// PeerJS Realtime Online Multiplayer Co-op Lobby & Synchronization System
-let peer = null;
-let peerConnections = [];
-let hostConn = null;
+// Firebase Realtime Cloud Multiplayer Engine
+const firebaseConfig = {
+    databaseURL: "https://bolitas-io-multiplayer-default-rtdb.firebaseio.com"
+};
+
+let db = null;
+let currentRoomRef = null;
+let currentPlayersRef = null;
+let myPlayerId = 'p_' + Math.random().toString(36).substring(2, 9);
 let roomCode = null;
 let isHost = false;
 let lobbyPlayers = [];
-let selectedLobbyMode = 'duo'; // 'duo' or 'squad'
+let selectedLobbyMode = 'duo';
 
-const STUN_CONFIG = {
-    config: {
-        iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' }
-        ]
+function initFirebase() {
+    if (!db && typeof firebase !== 'undefined') {
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.database();
+        } catch (e) {
+            console.warn('Firebase init:', e);
+        }
     }
-};
+}
 
 function renderLobbyPlayers() {
     const listContainer = document.getElementById('lobby-players-list');
@@ -2809,7 +2811,7 @@ function openTeamLobbyHost(initialMode = 'duo') {
     const nameInput = document.getElementById('player-name').value.trim();
     const hostName = nameInput || "Líder 👑";
 
-    lobbyPlayers = [{ name: hostName, isHost: true, peerId: 'host' }];
+    lobbyPlayers = [{ id: myPlayerId, name: hostName, isHost: true }];
 
     document.getElementById('lobby-code-text').textContent = `#${roomCode}`;
     document.getElementById('start-screen').classList.add('hidden');
@@ -2823,204 +2825,238 @@ function openTeamLobbyHost(initialMode = 'duo') {
     }
 
     renderLobbyPlayers();
+    initFirebase();
 
-    if (typeof Peer !== 'undefined') {
-        if (peer) peer.destroy();
-        peer = new Peer(`bolita-room-${roomCode}`, STUN_CONFIG);
-        peerConnections = [];
+    if (db) {
+        currentRoomRef = db.ref('rooms/' + roomCode);
+        currentPlayersRef = currentRoomRef.child('players');
 
-        peer.on('connection', (conn) => {
-            conn.on('open', () => {
-                peerConnections.push(conn);
-                const guestName = conn.metadata && conn.metadata.name ? conn.metadata.name : `Jugador #${lobbyPlayers.length + 1}`;
-                lobbyPlayers.push({ name: guestName, isHost: false, conn: conn, peerId: conn.peer });
-                renderLobbyPlayers();
-                broadcastLobbyState();
-            });
+        // Automatically delete room when host closes window/tab
+        currentRoomRef.onDisconnect().remove();
 
-            conn.on('data', (data) => {
-                if (data.type === 'clientInput') {
-                    // Update connected teammate position and state on Host
-                    let teammate = onlineTeammates.find(t => t.peerId === conn.peer);
-                    if (!teammate) {
-                        teammate = new Bolita(data.x, data.y, '#00e5ff', false, data.name || "Amigo Online");
-                        teammate.isOnlineTeammate = true;
-                        teammate.peerId = conn.peer;
-                        teammate.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
-                        onlineTeammates.push(teammate);
-                    }
-                    teammate.x = data.x;
-                    teammate.y = data.y;
-                    teammate.angle = data.angle;
-                    teammate.health = data.health;
-                    teammate.vestLevel = data.vestLevel || 0;
-                    teammate.helmetLevel = data.helmetLevel || 0;
-                } else if (data.type === 'shootEvent') {
-                    // Spawn bullet fired by client on Host's world
-                    const weaponDef = Object.values(WEAPONS).find(w => w.name === data.weaponName) || WEAPONS.AssaultRifle;
-                    const gunLen = weaponDef.len;
-                    let sx = data.x + Math.cos(data.angle) * gunLen;
-                    let sy = data.y + Math.sin(data.angle) * gunLen;
-                    if (weaponDef.pellets) {
-                        for (let i = 0; i < weaponDef.pellets; i++) {
-                            const spread = (Math.random() - 0.5) * weaponDef.spread;
-                            bullets.push(new Bullet(sx, sy, data.angle + spread, true, weaponDef.speed * (0.8 + Math.random() * 0.4), weaponDef.damage));
-                        }
-                    } else {
-                        const spread = (Math.random() - 0.5) * weaponDef.spread;
-                        bullets.push(new Bullet(sx, sy, data.angle + spread, true, weaponDef.speed, weaponDef.damage));
-                    }
-                }
-            });
+        currentRoomRef.set({
+            hostId: myPlayerId,
+            mode: initialMode,
+            status: 'lobby',
+            createdAt: Date.now()
+        });
 
-            conn.on('close', () => {
-                lobbyPlayers = lobbyPlayers.filter(p => p.conn !== conn);
-                onlineTeammates = onlineTeammates.filter(t => t.peerId !== conn.peer);
-                peerConnections = peerConnections.filter(c => c !== conn);
-                renderLobbyPlayers();
-                broadcastLobbyState();
-            });
+        currentPlayersRef.child(myPlayerId).set({
+            name: hostName,
+            isHost: true
+        });
+
+        // Listen for players joining in real-time
+        currentPlayersRef.on('value', (snap) => {
+            const val = snap.val();
+            lobbyPlayers = [];
+            if (val) {
+                Object.keys(val).forEach(pid => {
+                    lobbyPlayers.push({ id: pid, name: val[pid].name, isHost: val[pid].isHost });
+                });
+            }
+            renderLobbyPlayers();
+        });
+
+        // Listen for client player movements & bullets in real-time
+        currentRoomRef.child('inputs').on('child_added', (snap) => {
+            handleClientNetworkInput(snap.val());
+        });
+        currentRoomRef.child('inputs').on('child_changed', (snap) => {
+            handleClientNetworkInput(snap.val());
         });
     }
 }
 
+function handleClientNetworkInput(data) {
+    if (!data || data.playerId === myPlayerId) return;
+
+    if (data.type === 'clientInput') {
+        let tm = onlineTeammates.find(t => t.peerId === data.playerId);
+        if (!tm) {
+            tm = new Bolita(data.x, data.y, '#00e5ff', false, data.name || "Amigo Online");
+            tm.isOnlineTeammate = true;
+            tm.peerId = data.playerId;
+            tm.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
+            onlineTeammates.push(tm);
+        }
+        tm.x = data.x;
+        tm.y = data.y;
+        tm.angle = data.angle;
+        tm.health = data.health;
+        tm.vestLevel = data.vestLevel || 0;
+        tm.helmetLevel = data.helmetLevel || 0;
+    } else if (data.type === 'shootEvent') {
+        const weaponDef = Object.values(WEAPONS).find(w => w.name === data.weaponName) || WEAPONS.AssaultRifle;
+        const gunLen = weaponDef.len;
+        let sx = data.x + Math.cos(data.angle) * gunLen;
+        let sy = data.y + Math.sin(data.angle) * gunLen;
+        if (weaponDef.pellets) {
+            for (let i = 0; i < weaponDef.pellets; i++) {
+                const spread = (Math.random() - 0.5) * weaponDef.spread;
+                bullets.push(new Bullet(sx, sy, data.angle + spread, true, weaponDef.speed * (0.8 + Math.random() * 0.4), weaponDef.damage));
+            }
+        } else {
+            const spread = (Math.random() - 0.5) * weaponDef.spread;
+            bullets.push(new Bullet(sx, sy, data.angle + spread, true, weaponDef.speed, weaponDef.damage));
+        }
+    }
+}
+
 function broadcastLobbyState() {
-    const payload = {
-        type: 'lobbyUpdate',
-        players: lobbyPlayers.map(p => ({ name: p.name, isHost: p.isHost })),
-        mode: selectedLobbyMode
-    };
-    peerConnections.forEach(conn => {
-        if (conn.open) conn.send(payload);
-    });
+    if (isHost && currentRoomRef) {
+        currentRoomRef.update({ mode: selectedLobbyMode });
+    }
 }
 
 function joinTeamLobby(code) {
     const cleanCode = code.trim().replace('#', '');
     if (!cleanCode) return;
 
-    if (typeof Peer === 'undefined') {
-        alert('❌ Cargando sistema multijugador... Inténtalo de nuevo en 2 segundos.');
+    initFirebase();
+    if (!db) {
+        alert('❌ Conectando a la nube de Google Firebase... Inténtalo de nuevo en 2 segundos.');
         return;
     }
 
     isHost = false;
-    if (peer) peer.destroy();
-    peer = new Peer(STUN_CONFIG);
+    roomCode = cleanCode;
+    currentRoomRef = db.ref('rooms/' + cleanCode);
+    currentPlayersRef = currentRoomRef.child('players');
 
-    peer.on('open', () => {
+    currentRoomRef.once('value', (snap) => {
+        const roomData = snap.val();
+        if (!roomData) {
+            alert(`❌ No se encontró la sala #${cleanCode}. Verifica que el líder la haya creado.`);
+            return;
+        }
+
+        document.getElementById('join-room-modal').classList.add('hidden');
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('team-lobby-modal').classList.remove('hidden');
+
+        document.getElementById('lobby-code-text').textContent = `#${cleanCode}`;
+        const startBtn = document.getElementById('start-game-lobby-btn');
+        if (startBtn) {
+            startBtn.disabled = true;
+            startBtn.textContent = '⏳ ESPERANDO AL LÍDER...';
+            startBtn.style.opacity = '0.6';
+        }
+
         const playerName = document.getElementById('player-name').value.trim() || "Jugador Online";
-        hostConn = peer.connect(`bolita-room-${cleanCode}`, { metadata: { name: playerName } });
 
-        hostConn.on('open', () => {
-            document.getElementById('join-room-modal').classList.add('hidden');
-            document.getElementById('start-screen').classList.add('hidden');
-            document.getElementById('team-lobby-modal').classList.remove('hidden');
+        // Register in Google Firebase
+        const myRef = currentPlayersRef.child(myPlayerId);
+        myRef.onDisconnect().remove();
+        myRef.set({
+            name: playerName,
+            isHost: false
+        });
 
-            document.getElementById('lobby-code-text').textContent = `#${cleanCode}`;
-            const startBtn = document.getElementById('start-game-lobby-btn');
-            if (startBtn) {
-                startBtn.disabled = true;
-                startBtn.textContent = '⏳ ESPERANDO AL LÍDER...';
-                startBtn.style.opacity = '0.6';
+        // Listen for player list
+        currentPlayersRef.on('value', (s) => {
+            const val = s.val();
+            lobbyPlayers = [];
+            if (val) {
+                Object.keys(val).forEach(pid => {
+                    lobbyPlayers.push({ id: pid, name: val[pid].name, isHost: val[pid].isHost });
+                });
             }
+            renderLobbyPlayers();
+        });
 
-            hostConn.on('data', (data) => {
-                if (data.type === 'lobbyUpdate') {
-                    lobbyPlayers = data.players;
-                    renderLobbyPlayers();
-                } else if (data.type === 'startGame') {
+        // Listen for game start
+        currentRoomRef.child('status').on('value', (statusSnap) => {
+            if (statusSnap.val() === 'playing') {
+                currentRoomRef.child('mapData').once('value', (mapSnap) => {
                     document.getElementById('team-lobby-modal').classList.add('hidden');
-                    initGame(data.mode || 'duo', data.mapData);
+                    initGame(roomData.mode || 'duo', mapSnap.val());
                     createFloatingText(player.x, player.y - 40, `🚀 ¡PARTIDA EN SALA #${cleanCode}!`, '#00ff00', 24, true);
 
-                    // Show Room Code HUD
                     const roomHud = document.getElementById('room-code-hud');
                     const roomDisplay = document.getElementById('room-code-display');
                     if (roomHud && roomDisplay) {
                         roomDisplay.textContent = `#${cleanCode}`;
                         roomHud.classList.remove('hidden');
                     }
-                } else if (data.type === 'worldSync') {
-                    // Update Host position
-                    let hostTeammate = onlineTeammates.find(t => t.peerId === 'host');
-                    if (!hostTeammate && data.host) {
-                        hostTeammate = new Bolita(data.host.x, data.host.y, '#00e5ff', false, data.host.name || "Líder 👑");
-                        hostTeammate.isOnlineTeammate = true;
-                        hostTeammate.peerId = 'host';
-                        hostTeammate.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
-                        onlineTeammates.push(hostTeammate);
-                    }
-                    if (hostTeammate && data.host) {
-                        hostTeammate.x = data.host.x;
-                        hostTeammate.y = data.host.y;
-                        hostTeammate.angle = data.host.angle;
-                        hostTeammate.health = data.host.health;
-                        hostTeammate.vestLevel = data.host.vestLevel || 0;
-                        hostTeammate.helmetLevel = data.host.helmetLevel || 0;
-                    }
+                });
+            }
+        });
 
-                    // Update other teammates
-                    if (data.teammates) {
-                        data.teammates.forEach(tm => {
-                            if (tm.peerId !== peer.id) {
-                                let localTm = onlineTeammates.find(t => t.peerId === tm.peerId);
-                                if (!localTm) {
-                                    localTm = new Bolita(tm.x, tm.y, '#00e5ff', false, tm.name || "Amigo");
-                                    localTm.isOnlineTeammate = true;
-                                    localTm.peerId = tm.peerId;
-                                    localTm.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
-                                    onlineTeammates.push(localTm);
-                                }
-                                localTm.x = tm.x;
-                                localTm.y = tm.y;
-                                localTm.angle = tm.angle;
-                                localTm.health = tm.health;
-                                localTm.vestLevel = tm.vestLevel || 0;
-                                localTm.helmetLevel = tm.helmetLevel || 0;
-                            }
-                        });
-                    }
+        // Listen for world sync from Host
+        currentRoomRef.child('world').on('value', (worldSnap) => {
+            const world = worldSnap.val();
+            if (!world) return;
 
-                    // Sync Bots (Enemies)
-                    if (data.enemies) {
-                        while (enemies.length < data.enemies.length) {
-                            enemies.push(new Bolita(0, 0, '#d44e4e', false, "Bot"));
-                        }
-                        while (enemies.length > data.enemies.length) {
-                            enemies.pop();
-                        }
-                        data.enemies.forEach((ed, i) => {
-                            if (enemies[i]) {
-                                enemies[i].x = ed.x;
-                                enemies[i].y = ed.y;
-                                enemies[i].angle = ed.angle;
-                                enemies[i].health = ed.health;
-                                enemies[i].maxHealth = ed.maxHealth;
-                                enemies[i].color = ed.color;
-                                enemies[i].isElite = ed.isElite;
-                                enemies[i].name = ed.name;
-                                enemies[i].vestLevel = ed.vestLevel || 0;
-                                enemies[i].helmetLevel = ed.helmetLevel || 0;
-                            }
-                        });
-                    }
-
-                    // Sync Bullets
-                    if (data.bullets) {
-                        bullets = data.bullets.map(b => new Bullet(b.x, b.y, Math.atan2(b.vy, b.vx), b.isPlayer, Math.hypot(b.vx, b.vy), 20));
-                    }
-
-                    // Sync UI Meta
-                    if (data.horde !== undefined) currentHorde = data.horde;
-                    if (data.remaining !== undefined) hordeEnemiesRemaining = data.remaining;
-                    if (data.kills !== undefined) kills = data.kills;
+            // Sync Host & Teammates
+            if (world.host) {
+                let hostTeammate = onlineTeammates.find(t => t.peerId === 'host');
+                if (!hostTeammate) {
+                    hostTeammate = new Bolita(world.host.x, world.host.y, '#00e5ff', false, world.host.name || "Líder 👑");
+                    hostTeammate.isOnlineTeammate = true;
+                    hostTeammate.peerId = 'host';
+                    hostTeammate.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
+                    onlineTeammates.push(hostTeammate);
                 }
-            });
+                hostTeammate.x = world.host.x;
+                hostTeammate.y = world.host.y;
+                hostTeammate.angle = world.host.angle;
+                hostTeammate.health = world.host.health;
+                hostTeammate.vestLevel = world.host.vestLevel || 0;
+                hostTeammate.helmetLevel = world.host.helmetLevel || 0;
+            }
 
-            hostConn.on('error', () => {
-                alert(`❌ No se pudo conectar a la sala #${cleanCode}.`);
-            });
+            if (world.teammates) {
+                world.teammates.forEach(tm => {
+                    if (tm.peerId !== myPlayerId && tm.peerId !== 'host') {
+                        let localTm = onlineTeammates.find(t => t.peerId === tm.peerId);
+                        if (!localTm) {
+                            localTm = new Bolita(tm.x, tm.y, '#00e5ff', false, tm.name || "Amigo");
+                            localTm.isOnlineTeammate = true;
+                            localTm.peerId = tm.peerId;
+                            localTm.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
+                            onlineTeammates.push(localTm);
+                        }
+                        localTm.x = tm.x;
+                        localTm.y = tm.y;
+                        localTm.angle = tm.angle;
+                        localTm.health = tm.health;
+                        localTm.vestLevel = tm.vestLevel || 0;
+                        localTm.helmetLevel = tm.helmetLevel || 0;
+                    }
+                });
+            }
+
+            // Sync Bots (Enemies)
+            if (world.enemies) {
+                while (enemies.length < world.enemies.length) {
+                    enemies.push(new Bolita(0, 0, '#d44e4e', false, "Bot"));
+                }
+                while (enemies.length > world.enemies.length) {
+                    enemies.pop();
+                }
+                world.enemies.forEach((ed, i) => {
+                    if (enemies[i]) {
+                        enemies[i].x = ed.x;
+                        enemies[i].y = ed.y;
+                        enemies[i].angle = ed.angle;
+                        enemies[i].health = ed.health;
+                        enemies[i].maxHealth = ed.maxHealth;
+                        enemies[i].color = ed.color;
+                        enemies[i].isElite = ed.isElite;
+                        enemies[i].name = ed.name;
+                    }
+                });
+            }
+
+            // Sync Bullets
+            if (world.bullets) {
+                bullets = world.bullets.map(b => new Bullet(b.x, b.y, Math.atan2(b.vy, b.vx), b.isPlayer, Math.hypot(b.vx, b.vy), 20));
+            }
+
+            if (world.horde !== undefined) currentHorde = world.horde;
+            if (world.remaining !== undefined) hordeEnemiesRemaining = world.remaining;
+            if (world.kills !== undefined) kills = world.kills;
         });
     });
 }
@@ -3030,7 +3066,7 @@ function startGameFromLobby() {
 
     document.getElementById('team-lobby-modal').classList.add('hidden');
 
-    // Show Room Code HUD during gameplay
+    // Show Room Code HUD
     const roomHud = document.getElementById('room-code-hud');
     const roomDisplay = document.getElementById('room-code-display');
     if (roomHud && roomDisplay) {
@@ -3040,30 +3076,25 @@ function startGameFromLobby() {
 
     initGame(selectedLobbyMode);
 
-    // Get the authoritative procedural map data to replicate to all friends!
     const sharedMapData = getMapData();
 
-    // Create online teammates for all connected friends on Host
+    // Spawn teammates for connected friends
     onlineTeammates = [];
     lobbyPlayers.filter(p => !p.isHost).forEach((friend, idx) => {
         const friendPlayer = new Bolita(player.x + (idx + 1) * 60, player.y + (idx + 1) * 30, '#00e5ff', false, friend.name);
         friendPlayer.isOnlineTeammate = true;
-        friendPlayer.peerId = friend.peerId;
+        friendPlayer.peerId = friend.id;
         friendPlayer.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
         onlineTeammates.push(friendPlayer);
     });
 
-    // Broadcast start game event + exact map layout to all connected friends!
-    const payload = {
-        type: 'startGame',
-        mode: selectedLobbyMode,
-        mapData: sharedMapData,
-        players: lobbyPlayers.map(p => ({ name: p.name, isHost: p.isHost, peerId: p.peerId }))
-    };
-
-    peerConnections.forEach(conn => {
-        if (conn.open) conn.send(payload);
-    });
+    if (currentRoomRef) {
+        currentRoomRef.update({
+            status: 'playing',
+            mapData: sharedMapData,
+            mode: selectedLobbyMode
+        });
+    }
 }
 
 // Surviv.io GUI Menu Event Listeners
@@ -3115,7 +3146,10 @@ if (btnStartLobby) {
 
 if (btnLeaveLobby) {
     btnLeaveLobby.addEventListener('click', () => {
-        if (peer) peer.destroy();
+        if (currentRoomRef) {
+            if (isHost) currentRoomRef.remove();
+            else if (currentPlayersRef) currentPlayersRef.child(myPlayerId).remove();
+        }
         document.getElementById('team-lobby-modal').classList.add('hidden');
         document.getElementById('start-screen').classList.remove('hidden');
     });
