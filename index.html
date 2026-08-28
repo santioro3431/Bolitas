@@ -104,11 +104,44 @@
                     
                     <div class="surviv-btn-group">
                         <button id="start-btn-duo" class="surviv-btn btn-green btn-sub">Play Duo</button>
-                        <button id="start-btn-plus3" class="surviv-btn btn-green btn-sub">Play +3</button>
+                        <button id="start-btn-plus3" class="surviv-btn btn-green btn-sub">Play 3-10</button>
                     </div>
 
                     <button id="join-room-btn" class="surviv-btn btn-cyan">Unirse a Sala (Join Code)</button>
                     <button id="how-to-play-btn" class="surviv-btn btn-grey">How to Play</button>
+                </div>
+            </div>
+
+            <!-- Sala de Espera / Lobby Modal Window -->
+            <div id="team-lobby-modal" class="screen hidden">
+                <div class="lobby-card">
+                    <div class="lobby-header">
+                        <h2>🎮 SALA DE ESPERA EN VIVO</h2>
+                        <div class="lobby-code-box">
+                            <span>CÓDIGO: <strong id="lobby-code-text">#0000</strong></span>
+                            <button id="copy-code-btn" class="surviv-btn btn-cyan btn-sm">📋 Copiar</button>
+                        </div>
+                    </div>
+
+                    <div class="lobby-players-box">
+                        <h3>JUGADORES CONECTADOS (<span id="lobby-count">1</span>/10):</h3>
+                        <div id="lobby-players-list">
+                            <!-- Players inserted dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="lobby-mode-box">
+                        <label style="color: #aaa; font-weight: 700; font-size: 13px;">MODO DE JUEGO (LÍDER):</label>
+                        <div class="surviv-btn-group" style="margin-top: 5px;">
+                            <button id="lobby-mode-duo" class="surviv-btn btn-green active-mode">Dúo (2 Jugadores)</button>
+                            <button id="lobby-mode-squad" class="surviv-btn btn-green">Escuadrón (3 - 10 Jugadores)</button>
+                        </div>
+                    </div>
+
+                    <div class="lobby-actions">
+                        <button id="start-game-lobby-btn" class="surviv-btn btn-green btn-main">🚀 INICIAR PARTIDA</button>
+                        <button id="leave-lobby-btn" class="surviv-btn btn-grey" style="margin-top: 8px;">SALIR DE LA SALA</button>
+                    </div>
                 </div>
             </div>
 

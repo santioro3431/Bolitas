@@ -2583,59 +2583,116 @@ function drawMinimap() {
     minimapCtx.fill();
 }
 
-// PeerJS Online Multiplayer Co-op System
+// PeerJS Realtime Online Multiplayer Co-op Lobby System
 let peer = null;
 let peerConnections = [];
 let roomCode = null;
+let isHost = false;
+let lobbyPlayers = [];
+let selectedLobbyMode = 'duo'; // 'duo' or 'squad'
 
-function setupHostMultiplayer() {
-    roomCode = Math.floor(1000 + Math.random() * 9000).toString();
-    const roomHud = document.getElementById('room-code-hud');
-    const roomDisplay = document.getElementById('room-code-display');
-
-    if (roomHud && roomDisplay) {
-        roomDisplay.textContent = `#${roomCode}`;
-        roomHud.classList.remove('hidden');
+const STUN_CONFIG = {
+    config: {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' }
+        ]
     }
+};
+
+function renderLobbyPlayers() {
+    const listContainer = document.getElementById('lobby-players-list');
+    const countDisplay = document.getElementById('lobby-count');
+    if (!listContainer) return;
+
+    listContainer.innerHTML = '';
+    if (countDisplay) countDisplay.textContent = lobbyPlayers.length;
+
+    lobbyPlayers.forEach((p) => {
+        const item = document.createElement('div');
+        item.className = 'lobby-player-item';
+        item.innerHTML = `
+            <span>🟢 ${p.name} ${p.isHost ? '(Líder)' : ''}</span>
+            <span class="player-role-badge ${p.isHost ? 'badge-host' : 'badge-guest'}">${p.isHost ? '👑 LÍDER' : '👤 JUGADOR'}</span>
+        `;
+        listContainer.appendChild(item);
+    });
+}
+
+function openTeamLobbyHost(initialMode = 'duo') {
+    roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    isHost = true;
+    selectedLobbyMode = initialMode;
+
+    const nameInput = document.getElementById('player-name').value.trim();
+    const hostName = nameInput || "Líder 👑";
+
+    lobbyPlayers = [{ name: hostName, isHost: true, peerId: 'host' }];
+
+    document.getElementById('lobby-code-text').textContent = `#${roomCode}`;
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('team-lobby-modal').classList.remove('hidden');
+
+    const startBtn = document.getElementById('start-game-lobby-btn');
+    if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.textContent = '🚀 INICIAR PARTIDA';
+        startBtn.style.opacity = '1';
+    }
+
+    renderLobbyPlayers();
 
     if (typeof Peer !== 'undefined') {
         if (peer) peer.destroy();
-        peer = new Peer(`bolitas-room-${roomCode}`);
-
-        peer.on('open', () => {
-            createFloatingText(player.x, player.y - 40, `🌐 SALA CREADA: #${roomCode}`, '#00ffcc', 24, true);
-        });
+        peer = new Peer(`bolita-room-${roomCode}`, STUN_CONFIG);
+        peerConnections = [];
 
         peer.on('connection', (conn) => {
-            peerConnections.push(conn);
+            conn.on('open', () => {
+                peerConnections.push(conn);
 
-            const allyName = conn.metadata && conn.metadata.name ? conn.metadata.name : `AMIGO ONLINE`;
-            const onlineAlly = new Bolita(player.x + 60, player.y + 40, '#00e5ff', false, allyName);
-            onlineAlly.isAlly = true;
-            onlineAlly.isOnlinePlayer = true;
-            onlineAlly.conn = conn;
-            onlineAlly.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
-            enemies.push(onlineAlly);
+                const guestName = conn.metadata && conn.metadata.name ? conn.metadata.name : `Jugador #${lobbyPlayers.length + 1}`;
+                lobbyPlayers.push({ name: guestName, isHost: false, conn: conn });
+                renderLobbyPlayers();
 
-            createFloatingText(player.x, player.y - 60, `✅ ¡${allyName} SE UNIÓ A LA PARTIDA!`, '#00ff00', 24, true);
+                // Broadcast updated player list to all connected clients in the lobby
+                broadcastLobbyState();
+            });
 
             conn.on('data', (data) => {
                 if (data.type === 'move') {
-                    onlineAlly.x = data.x;
-                    onlineAlly.y = data.y;
-                    onlineAlly.angle = data.angle;
+                    const ally = enemies.find(e => e.conn === conn);
+                    if (ally) {
+                        ally.x = data.x; ally.y = data.y; ally.angle = data.angle;
+                    }
                 }
             });
 
             conn.on('close', () => {
-                onlineAlly.markedForDeletion = true;
-                createFloatingText(player.x, player.y - 60, `❌ ¡${allyName} SE DESCONECTÓ!`, '#ff4444', 20);
+                lobbyPlayers = lobbyPlayers.filter(p => p.conn !== conn);
+                peerConnections = peerConnections.filter(c => c !== conn);
+                renderLobbyPlayers();
+                broadcastLobbyState();
             });
         });
     }
 }
 
-function joinMultiplayerRoom(code) {
+function broadcastLobbyState() {
+    const payload = {
+        type: 'lobbyUpdate',
+        players: lobbyPlayers.map(p => ({ name: p.name, isHost: p.isHost })),
+        mode: selectedLobbyMode
+    };
+    peerConnections.forEach(conn => {
+        if (conn.open) conn.send(payload);
+    });
+}
+
+function joinTeamLobby(code) {
     const cleanCode = code.trim().replace('#', '');
     if (!cleanCode) return;
 
@@ -2644,37 +2701,80 @@ function joinMultiplayerRoom(code) {
         return;
     }
 
+    isHost = false;
     if (peer) peer.destroy();
-    peer = new Peer();
+    peer = new Peer(STUN_CONFIG);
 
     peer.on('open', () => {
-        const playerName = document.getElementById('player-name').value.trim() || "Amigo Online";
-        const conn = peer.connect(`bolitas-room-${cleanCode}`, { metadata: { name: playerName } });
+        const playerName = document.getElementById('player-name').value.trim() || "Jugador Online";
+        const conn = peer.connect(`bolita-room-${cleanCode}`, { metadata: { name: playerName } });
 
         conn.on('open', () => {
             document.getElementById('join-room-modal').classList.add('hidden');
             document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('team-lobby-modal').classList.remove('hidden');
 
-            initGame('solo');
+            document.getElementById('lobby-code-text').textContent = `#${cleanCode}`;
+            const startBtn = document.getElementById('start-game-lobby-btn');
+            if (startBtn) {
+                startBtn.disabled = true;
+                startBtn.textContent = '⏳ ESPERANDO AL LÍDER...';
+                startBtn.style.opacity = '0.6';
+            }
 
-            createFloatingText(player.x, player.y - 40, `✅ ¡CONECTADO A LA SALA #${cleanCode}!`, '#00ff00', 24, true);
+            conn.on('data', (data) => {
+                if (data.type === 'lobbyUpdate') {
+                    lobbyPlayers = data.players;
+                    renderLobbyPlayers();
+                } else if (data.type === 'startGame') {
+                    document.getElementById('team-lobby-modal').classList.add('hidden');
+                    initGame(data.mode || 'duo');
+                    createFloatingText(player.x, player.y - 40, `🚀 ¡PARTIDA INICIADA EN SALA #${cleanCode}!`, '#00ff00', 24, true);
 
-            // Send player movement to Host
-            setInterval(() => {
-                if (conn && player && !player.markedForDeletion) {
-                    conn.send({
-                        type: 'move',
-                        x: player.x,
-                        y: player.y,
-                        angle: player.angle
-                    });
+                    setInterval(() => {
+                        if (conn && player && !player.markedForDeletion) {
+                            conn.send({ type: 'move', x: player.x, y: player.y, angle: player.angle });
+                        }
+                    }, 40);
                 }
-            }, 40);
-        });
+            });
 
-        conn.on('error', () => {
-            alert(`❌ No se encontró la sala #${cleanCode}. Verifica que el anfitrión haya hecho clic en Play Duo o Play +3.`);
+            conn.on('error', () => {
+                alert(`❌ No se pudo conectar a la sala #${cleanCode}.`);
+            });
         });
+    });
+}
+
+function startGameFromLobby() {
+    if (!isHost) return;
+
+    // Broadcast start game event to all connected friends in the lobby!
+    const payload = { type: 'startGame', mode: selectedLobbyMode };
+    peerConnections.forEach(conn => {
+        if (conn.open) conn.send(payload);
+    });
+
+    document.getElementById('team-lobby-modal').classList.add('hidden');
+
+    // Show Room Code HUD during gameplay
+    const roomHud = document.getElementById('room-code-hud');
+    const roomDisplay = document.getElementById('room-code-display');
+    if (roomHud && roomDisplay) {
+        roomDisplay.textContent = `#${roomCode}`;
+        roomHud.classList.remove('hidden');
+    }
+
+    initGame(selectedLobbyMode);
+
+    // Spawn real online player teammates for each connected friend!
+    lobbyPlayers.filter(p => !p.isHost).forEach((friend, idx) => {
+        const friendPlayer = new Bolita(player.x + (idx + 1) * 60, player.y + (idx + 1) * 30, '#00e5ff', false, friend.name);
+        friendPlayer.isAlly = true;
+        friendPlayer.isOnlinePlayer = true;
+        friendPlayer.conn = friend.conn;
+        friendPlayer.inventory[0] = { type: WEAPONS.AssaultRifle, ammo: 999 };
+        enemies.push(friendPlayer);
     });
 }
 
@@ -2687,19 +2787,18 @@ const btnHowToPlay = document.getElementById('how-to-play-btn');
 const btnCloseModal = document.getElementById('close-modal-btn');
 const btnConnectRoom = document.getElementById('connect-room-btn');
 const btnCancelJoin = document.getElementById('cancel-join-btn');
+const btnStartLobby = document.getElementById('start-game-lobby-btn');
+const btnLeaveLobby = document.getElementById('leave-lobby-btn');
+const btnCopyCode = document.getElementById('copy-code-btn');
+const btnModeDuo = document.getElementById('lobby-mode-duo');
+const btnModeSquad = document.getElementById('lobby-mode-squad');
 
 const modalHowToPlay = document.getElementById('how-to-play-modal');
 const modalJoinRoom = document.getElementById('join-room-modal');
 
 if (btnSolo) btnSolo.addEventListener('click', () => initGame('solo'));
-if (btnDuo) btnDuo.addEventListener('click', () => {
-    initGame('duo');
-    setupHostMultiplayer();
-});
-if (btnPlus3) btnPlus3.addEventListener('click', () => {
-    initGame('plus3');
-    setupHostMultiplayer();
-});
+if (btnDuo) btnDuo.addEventListener('click', () => openTeamLobbyHost('duo'));
+if (btnPlus3) btnPlus3.addEventListener('click', () => openTeamLobbyHost('squad'));
 
 if (btnJoinRoom) {
     btnJoinRoom.addEventListener('click', () => {
@@ -2710,13 +2809,56 @@ if (btnJoinRoom) {
 if (btnConnectRoom) {
     btnConnectRoom.addEventListener('click', () => {
         const inputCode = document.getElementById('room-code-input').value;
-        joinMultiplayerRoom(inputCode);
+        joinTeamLobby(inputCode);
     });
 }
 
 if (btnCancelJoin) {
     btnCancelJoin.addEventListener('click', () => {
         if (modalJoinRoom) modalJoinRoom.classList.add('hidden');
+    });
+}
+
+if (btnStartLobby) {
+    btnStartLobby.addEventListener('click', () => {
+        startGameFromLobby();
+    });
+}
+
+if (btnLeaveLobby) {
+    btnLeaveLobby.addEventListener('click', () => {
+        if (peer) peer.destroy();
+        document.getElementById('team-lobby-modal').classList.add('hidden');
+        document.getElementById('start-screen').classList.remove('hidden');
+    });
+}
+
+if (btnCopyCode) {
+    btnCopyCode.addEventListener('click', () => {
+        if (roomCode) {
+            navigator.clipboard.writeText(roomCode);
+            alert(`📋 ¡Código #${roomCode} copiado al portapapeles! Envíalo a tu amigo.`);
+        }
+    });
+}
+
+if (btnModeDuo) {
+    btnModeDuo.addEventListener('click', () => {
+        if (!isHost) return;
+        selectedLobbyMode = 'duo';
+        btnModeDuo.classList.add('active-mode');
+        if (btnModeSquad) btnModeSquad.classList.remove('active-mode');
+        broadcastLobbyState();
+    });
+}
+
+if (btnModeSquad) {
+    btnModeSquad.addEventListener('click', () => {
+        if (!isHost) return;
+        selectedLobbyMode = 'squad';
+        btnModeSquad.classList.add('active-mode');
+        if (btnModeDuo) btnModeDuo.classList.remove('active-mode');
+        broadcastLobbyState();
     });
 }
 
